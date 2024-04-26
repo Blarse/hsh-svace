@@ -1,0 +1,55 @@
+#!/bin/bash -efu
+
+cd "$(dirname $(readlink -e $0))"
+
+rebuild_prog="$(mktemp -t hsh-svace-rp.XXXXXXXX)"
+query_req_prog="$(mktemp -t hsh-svace-qr.XXXXXXXX)"
+
+workdir=./hasher
+
+mkdir -p "$workdir"
+
+pkg_tar="$1"
+shift
+
+trap "rm -f $rebuild_prog $query_req_prog" EXIT
+
+cat > "$rebuild_prog" <<EOF
+#!/bin/sh -le
+set -x
+
+export -n target ||:
+SOURCE_DATE_EPOCH="\$(cat -- "\$HOME/in/SOURCE_DATE_EPOCH")"
+export SOURCE_DATE_EPOCH
+
+rpmi -i \\
+	--define "_specdir \$HOME/RPM/SPECS" \\
+	--define "_sourcedir \$HOME/RPM/SOURCES" \\
+	"\$@"
+
+/opt/svace/bin/svace init
+time /opt/svace/bin/svace build rpmbuild -bc \$HOME/RPM/SPECS/* --target="\$target" >&2
+EOF
+
+# Always mount /proc in hsh-rebuild for svace
+cat > "$query_req_prog" <<EOF
+#!/bin/sh -e
+echo "/proc"
+rpmquery -pR -- "\$@"
+EOF
+
+hsh -v --initroot-only --workdir "$workdir"
+hsh-copy -v --rooter --workdir "$workdir" ./svace /opt/svace
+hsh-rebuild -v --mountpoints='/proc' \
+            --query-req-prog="$query_req_prog" \
+            --rebuild-prog="$rebuild_prog" \
+            --no-sisyphus-check-out \
+            --workdir "$workdir" "$pkg_tar"
+
+hsh-run -v --workdir "$workdir" -- sh -eu <<EOF
+tar --zstd -cf /.out/svace-dir.tar.zst /usr/src/in/srpm/.svace-dir
+EOF
+
+cp -f "$workdir/chroot/.out/svace-dir.tar.zst" .
+hsh-rmchroot -v "$workdir"
+
