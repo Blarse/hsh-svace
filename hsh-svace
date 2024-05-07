@@ -5,15 +5,15 @@ cd "$(dirname $(readlink -e $0))"
 
 rebuild_prog="$(mktemp -t hsh-svace-rp.XXXXXXXX)"
 query_req_prog="$(mktemp -t hsh-svace-qr.XXXXXXXX)"
+trap "rm -f $rebuild_prog $query_req_prog" EXIT
 
 workdir=./hasher
 
 mkdir -p "$workdir"
+trap "hsh-rmchroot -v $workdir" EXIT
 
 pkg_tar="$1"
 shift
-
-trap "rm -f $rebuild_prog $query_req_prog" EXIT
 
 cat > "$rebuild_prog" <<EOF
 #!/bin/sh -le
@@ -52,5 +52,3 @@ tar --zstd -cf /.out/svace-dir.tar.zst -C /usr/src/in/srpm ./.svace-dir
 EOF
 
 cp -f "$workdir/chroot/.out/svace-dir.tar.zst" "$save_cwd/svace-dir.tar.zst"
-hsh-rmchroot -v "$workdir"
-
