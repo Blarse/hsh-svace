@@ -47,7 +47,7 @@ hsh-rebuild -v --mountpoints='/proc' \
             --workdir "$workdir" "$pkg_tar"
 
 hsh-run -v --workdir "$workdir" -- sh -eu <<EOF
-tar --zstd -cf /.out/svace-dir.tar.zst /usr/src/in/srpm/.svace-dir
+tar --zstd -cf /.out/svace-dir.tar.zst -C /usr/src/in/srpm ./.svace-dir
 EOF
 
 cp -f "$workdir/chroot/.out/svace-dir.tar.zst" .
