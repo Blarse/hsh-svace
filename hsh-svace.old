@@ -28,20 +28,20 @@ rpmi -i \\
 	--define "_sourcedir \$HOME/RPM/SOURCES" \\
 	"\$@"
 
-/media/bin/svace init
-time /media/bin/svace build rpmbuild -bc \$HOME/RPM/SPECS/* --target="\$target" >&2
+/opt/svace/bin/svace init
+time /opt/svace/bin/svace build rpmbuild -bc \$HOME/RPM/SPECS/* --target="\$target" >&2
 EOF
 
 # Always mount /proc in hsh-rebuild for svace
 cat > "$query_req_prog" <<EOF
 #!/bin/sh -e
-echo /proc
-echo /media
+echo "/proc"
 rpmquery -pR -- "\$@"
 EOF
 
 hsh -v --without-stuff --initroot-only --workdir "$workdir"
-hsh-rebuild -v --mountpoints='/proc,/media' \
+hsh-copy -v --rooter --workdir "$workdir" ./svace /opt/svace
+hsh-rebuild -v --mountpoints='/proc' \
             --query-req-prog="$query_req_prog" \
             --rebuild-prog="$rebuild_prog" \
             --no-sisyphus-check-out \

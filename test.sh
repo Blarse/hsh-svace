@@ -8,4 +8,4 @@ cd "$(dirname $(readlink -e $0))"
 
 GIT_DIR="$PWD/linux-pam/.git" \
 GIT_WORKTREE_DIR="$PWD/linux-pam" \
-gear --zstd --hasher -- ./hsh-svace
+gear --zstd --hasher -- ./hsh-svace.old
