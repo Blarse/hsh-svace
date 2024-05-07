@@ -1,5 +1,6 @@
 #!/bin/bash -efu
 
+save_cwd="$PWD"
 cd "$(dirname $(readlink -e $0))"
 
 rebuild_prog="$(mktemp -t hsh-svace-rp.XXXXXXXX)"
@@ -50,6 +51,6 @@ hsh-run -v --workdir "$workdir" -- sh -eu <<EOF
 tar --zstd -cf /.out/svace-dir.tar.zst -C /usr/src/in/srpm ./.svace-dir
 EOF
 
-cp -f "$workdir/chroot/.out/svace-dir.tar.zst" .
+cp -f "$workdir/chroot/.out/svace-dir.tar.zst" "$save_cwd/svace-dir.tar.zst"
 hsh-rmchroot -v "$workdir"
 
