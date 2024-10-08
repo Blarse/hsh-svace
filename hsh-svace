@@ -1,54 +1,121 @@
 #!/bin/bash -efu
 
-save_cwd="$PWD"
-cd "$(dirname $(readlink -e $0))"
+# This file is part of hsh-svace.
+#
+# Copyright (C) 2024  Egor Ignatov <egori@altlinux.org>
+#
+# hsh-svace is free software: you can redistribute it and/or modify it
+# under the  terms of the GNU  General Public License as  published by
+# the Free  Software Foundation, either  version 3 of the  License, or
+# (at your option) any later version.
+#
+# hsh-svace is  distributed in the  hope that  it will be  useful, but
+# WITHOUT  ANY   WARRANTY;  without  even  the   implied  warranty  of
+# MERCHANTABILITY or  FITNESS FOR  A PARTICULAR  PURPOSE. See  the GNU
+# General Public License for more details.
+#
+# You should  have received a copy  of the GNU General  Public License
+# along with Foobar. If not, see <https://www.gnu.org/licenses/>.
 
-rebuild_prog="$(mktemp -t hsh-svace-rp.XXXXXXXX)"
-query_req_prog="$(mktemp -t hsh-svace-qr.XXXXXXXX)"
-trap "rm -f $rebuild_prog $query_req_prog" EXIT
+show_help()
+{
+    cat <<EOF
+Usage: $PROG [options] [<path-to-workdir>] <package>
+  or:  $PROG [options] --workdir=DIR <package>
 
-workdir=./hasher
+Options:
+    --workdir=DIR              path to workdir to use (default $HOME/hasher);
+    --build-only               skip svace analysis, just build;
+    -r, --rebuild              use existing hasher;
+    -q, --quiet                try to be more quiet;
+    -h, --help                 show this text and exit.
 
-mkdir -p "$workdir"
-trap "hsh-rmchroot -v $workdir" EXIT
-
-pkg_tar="$1"
-shift
-
-cat > "$rebuild_prog" <<EOF
-#!/bin/sh -le
-set -x
-
-export -n target ||:
-SOURCE_DATE_EPOCH="\$(cat -- "\$HOME/in/SOURCE_DATE_EPOCH")"
-export SOURCE_DATE_EPOCH
-
-rpmi -i \\
-	--define "_specdir \$HOME/RPM/SPECS" \\
-	--define "_sourcedir \$HOME/RPM/SOURCES" \\
-	"\$@"
-
-/media/bin/svace init
-time /media/bin/svace build rpmbuild -bc \$HOME/RPM/SPECS/* --target="\$target" >&2
 EOF
+}
 
-# Always mount /proc in hsh-rebuild for svace
-cat > "$query_req_prog" <<EOF
-#!/bin/sh -e
-echo /proc
-echo /media
-rpmquery -pR -- "\$@"
-EOF
+show_usage()
+{
+    [ -z "${1:-}" ] || echo "$1" >&2
+    show_help >&2
+    exit 1
+}
 
-hsh -v --without-stuff --initroot-only --workdir "$workdir"
-hsh-rebuild -v --mountpoints='/proc,/media' \
-            --query-req-prog="$query_req_prog" \
-            --rebuild-prog="$rebuild_prog" \
-            --no-sisyphus-check-out \
-            --workdir "$workdir" "$pkg_tar"
+PROG=hsh-svace
+TEMP=$(getopt -n $PROG -o "r,h,q" -l "rebuild,build-only,workdir:,help,quiet" -- "$@") \
+    || show_usage
+eval set -- "$TEMP"
 
-hsh-run -v --workdir "$workdir" -- sh -eu <<EOF
-tar --zstd -cf /.out/svace-dir.tar.zst -C /usr/src/in/srpm ./.svace-dir
-EOF
+selfdir="$(dirname $(realpath $0))"
+verbose=-v
+quiet=
+analyze=1
+rebuild=
+workdir_from_opt=
+workdir=$HOME/hasher
 
-cp -f "$workdir/chroot/.out/svace-dir.tar.zst" "$save_cwd/svace-dir.tar.zst"
+while :; do
+    case "$1" in
+        --) shift; break
+            ;;
+        --workdir) shift; workdir="$1"
+                   workdir_from_opt=1
+                   ;;
+        -q|--quiet) verbose=
+                    quiet=-q
+                    ;;
+        -r|--rebuild) rebuild=1
+                      ;;
+        --build-only) analyze=
+                      ;;
+        --apt-config) shift; apt_config="$1"
+                      ;;
+        -h|--help)
+            show_help
+            exit 0
+            ;;
+        *) show_usage "Unrecognized option: $1"
+           ;;
+    esac
+    shift
+done
+
+if [ -z "$workdir_from_opt" ]; then
+    if [ -d "${1-}" ]; then
+        # At least one argument.
+        [ "$#" -ge 1 ] || show_usage 'Insufficient arguments.'
+        workdir="$1"
+        shift
+    fi
+fi
+
+[ "$#" -ge 1 ] || show_usage 'Insufficient arguments.'
+pkgtar="$1"
+
+# init hasher
+[ -n "${rebuild:-}" ] ||
+    hsh $verbose \
+    --initroot-only \
+    --without-stuff \
+    ${apt_config:+--apt-config "$apt_config"} \
+    --workdir "$workdir"
+
+# install deps
+hsh-rebuild $verbose \
+     --install-only \
+     --workdir "$workdir" \
+     "$pkgtar"
+
+# run build
+hsh-run $verbose \
+        --mountpoints=/proc,/opt,/dev/pts,/dev/shm,/dev/kvm \
+        --execute="$selfdir/hsh-svace-build.sh" \
+        "$workdir" -- $quiet
+
+# run analyze
+if [ -n "${analyze:-}" ]; then
+    hsh-run $verbose --rooter --workdir "$workdir" -- sh -c 'mkdir -p /var/hasplm'
+    share_network=1 hsh-run $verbose \
+                    --mountpoints=/proc,/opt,/dev/pts,/dev/shm,/dev/kvm,/var/hasplm \
+                    --execute="$selfdir/hsh-svace-analyze.sh" \
+                    "$workdir" -- $quiet
+fi
