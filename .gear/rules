@@ -1,0 +1,2 @@
+spec: .gear/hsh-svace.spec
+tar: . exclude=.gear
