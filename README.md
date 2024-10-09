@@ -1,22 +1,70 @@
 # hsh-svace
 
-Proof of Concept SVACE in hasher.
+Run SVACE in hasher.
 
-Run `./test.sh` to download SVACE, clone linux-pam gear repository and build it under SVACE. As a result `svace-dir.tar.zst` with .svace-dir will be created.
+https://www.ispras.ru/en/technologies/svace
 
-## Bind mount setup
+## Prerequisites
 
-Bind mount allows using SVACE from the host to avoid copying it inside each chroot.
+- SVACE installed in /opt
+- Configured hasher (https://www.altlinux.org/Hasher)
+- Extra hasher configuration for (more on this later)
 
-Aditional hasher-priv setup is required to bind mount svace distribution inside hasher chroot.
+## Usage
 
-`hsh-rebuild` needs mount point that explicitly provided by some package. For that reason `/media` from filesystem package was chosen, although it is not a convenient place for that kind of task.
-
-First, the following line should be add to `/etc/hasher-priv/fstab`:
+`hsh-svace` is used like `hsh` or `hsh-rebuild`, just run it with gear command:
 ```
-<path-to-svace-distribution> /media none bind
+gear [gear_options] --hasher -- hsh-svace [hsh-svace_options]
+
+for example:
+
+gear -v --commit --hasher -- hsh-svace --workdir=~/hasher
 ```
 
-And second, `/media` should be added to allowed_mountpoints in systemwide (/etc/hasher-priv/system) or user (/etc/hasher-priv/user.d/$USER) configuration.
+By default hsh-svace runs both `svace build` and `svace analyze`, the latter
+requires a license key and special configuration (see below). To skip analisys
+add `--build-only` option.
 
-> For backward compatibility and quick setup `hsh-svace.old` is provided.
+Run `hsh-svace --help` to see all the options.
+
+## Extra hasher configuration
+### Configure hasher to use svace from host (required)
+`hsh-svace` mounts host's `/opt` directory inside the hasher environmet and
+expects a svace distribution there. The following hasher-priv configuration is
+required to achive this:
+
+Firstly аppend `/etc/hasher-priv/fstab` with:
+```
+/opt /opt bind bind,ro,nosuid,nodev 0 0
+```
+
+Then add /opt mount point to `allowed_mountpoints` option in systemwide
+(/etc/hasher-priv/system) or user (/etc/hasher-priv/user.d/$USER) configuration.
+
+You may need to restart hasher-priv in order for this to start working.
+```
+# systemctl restart hasher-privd.service
+```
+
+> TIP: You can install multiple svace distribution to /opt and a create symlink
+>      /opt/svace pointing to the relevant one.
+
+> NOTE: to only mount svace distribution use /opt/svace instead of /opt.
+
+### Additional configuration for analysis
+Svace analysis stage requires configured haspd license server. The description
+of how to set up such a server is beyond the scope here. I assume that it is
+configured on the host, and will only describe how to use it in a hasher
+environment.
+
+Configure /var/hasplm mountpoint just as described in the above
+section. For `/etc/hasher-priv/fstab` use:
+```
+/var/hasplm /var/hasplm bind bind,ro,nosuid,nodev,noexec 0 0
+```
+Аdd it to `allowed_mountpoints`. Restart hasher-priv, and that should be it.
+
+# License
+This project is licensed under the terms of the GNU GPLv3 license.
+
+Copyright (C) 2024  Egor Ignatov <egori@altlinux.org>
