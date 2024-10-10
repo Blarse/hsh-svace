@@ -122,7 +122,7 @@ hsh-run $verbose \
 if [ -n "${analyze:-}" ]; then
     hsh-run $verbose --rooter --workdir "$workdir" -- sh -c 'mkdir -p /var/hasplm'
     share_network=1 hsh-run $verbose \
-                    --mountpoints=/proc,/opt,/dev/pts,/dev/shm,/dev/kvm,/var/hasplm \
+                    --mountpoints=/proc,/opt,/var/hasplm \
                     --execute="$selfdir/hsh-svace-analyze.sh" \
                     "$workdir" -- $quiet
 fi
