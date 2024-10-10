@@ -24,7 +24,8 @@ Usage: $PROG [options] [<path-to-workdir>] <package>
   or:  $PROG [options] --workdir=DIR <package>
 
 Options:
-    --workdir=DIR              path to workdir to use (default $HOME/hasher);
+    --workdir=DIR              path to workdir to use (default ~/hasher);
+    --outdir=DIR               directory for results (default .)
     --build-only               skip svace analysis, just build;
     -r, --rebuild              use existing hasher;
     -q, --quiet                try to be more quiet;
@@ -41,7 +42,7 @@ show_usage()
 }
 
 PROG=hsh-svace
-TEMP=$(getopt -n $PROG -o "r,h,q" -l "rebuild,build-only,workdir:,help,quiet" -- "$@") \
+TEMP=$(getopt -n $PROG -o "r,h,q" -l "rebuild,build-only,workdir:,outdir:,help,quiet" -- "$@") \
     || show_usage
 eval set -- "$TEMP"
 
@@ -52,6 +53,7 @@ analyze=1
 rebuild=
 workdir_from_opt=
 workdir=$HOME/hasher
+outdir="$PWD"
 
 while :; do
     case "$1" in
@@ -60,6 +62,8 @@ while :; do
         --workdir) shift; workdir="$1"
                    workdir_from_opt=1
                    ;;
+        --outdir) shift; outdir="$1"
+                     ;;
         -q|--quiet) verbose=
                     quiet=-q
                     ;;
@@ -87,6 +91,9 @@ if [ -z "$workdir_from_opt" ]; then
         shift
     fi
 fi
+
+[ -d "$outdir" ] || show_usage 'Outdir does not exist or not a directory'
+outdir="$(realpath $outdir)"
 
 [ "$#" -ge 1 ] || show_usage 'Insufficient arguments.'
 pkgtar="$1"
@@ -119,3 +126,5 @@ if [ -n "${analyze:-}" ]; then
                     --execute="$selfdir/hsh-svace-analyze.sh" \
                     "$workdir" -- $quiet
 fi
+
+mv -f "$workdir/chroot/.out/svace-results.tar" "$outdir/svace-results.tar"

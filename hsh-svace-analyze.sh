@@ -56,5 +56,8 @@ ${verbose:+set -x}
                      --svace-dir $HOME/out/svace-dir 2>&1 | \
     tee $HOME/out/svace-analyze.log >&2
 
-rm -rf "/.out/svace-results"
-cp -r "$HOME/out" /.out/svace-results
+rm -f /.out/svace-results.tar
+tar -cf /.out/svace-results.tar \
+    --owner=user --group=user \
+    --transform 's/^.\/out/svace-results/' \
+    -C "$HOME" ./out
