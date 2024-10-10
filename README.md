@@ -27,6 +27,11 @@ add `--build-only` option.
 
 Run `hsh-svace --help` to see all the options.
 
+## Results
+As a result, `hsh-svace` creates an archive named `svace-results.tar` and places
+it in the directory specified with `--outdir` or in the current working
+directory if not specified.
+
 ## Extra hasher configuration
 ### Configure hasher to use svace from host (required)
 `hsh-svace` mounts host's `/opt` directory inside the hasher environmet and
