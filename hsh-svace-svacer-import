@@ -1,0 +1,199 @@
+#!/bin/sh -efu
+
+# This file is part of hsh-svace.
+#
+# Copyright (C) 2024  Egor Ignatov <egori@altlinux.org>
+#
+# hsh-svace is free software: you can redistribute it and/or modify it
+# under the  terms of the GNU  General Public License as  published by
+# the Free  Software Foundation, either  version 3 of the  License, or
+# (at your option) any later version.
+#
+# hsh-svace is  distributed in the  hope that  it will be  useful, but
+# WITHOUT  ANY   WARRANTY;  without  even  the   implied  warranty  of
+# MERCHANTABILITY or  FITNESS FOR  A PARTICULAR  PURPOSE. See  the GNU
+# General Public License for more details.
+#
+# You should  have received a copy  of the GNU General  Public License
+# along with hsh-svace. If not, see <https://www.gnu.org/licenses/>.
+
+show_help()
+{
+    cat <<EOF
+Usage:
+    $PROG [options] --svace-dir=DIR  --project=<project> --branch=<branch> --snapshot=<snapshot>
+    or:  $PROG [options] --metadata=[<path-to-metadata>]
+
+
+  NOTE: The argument parameters override parameters from the metadata file.
+
+Options:
+    --store=DIR                svacer store (default ./.svacer-dir);
+    --outdir=DIR               alias to --store;
+    --svace-dir=DIR            path to svace-dir;
+
+    --svace=PATH               path to svace binary;
+    --svacer=PATH              path to svacer binary;
+
+    --metadata=FILE            hsh-svace metadata file;
+    --project=PROJECT          project name;
+    --branch=BRANCH            branch name;
+    --branch-prefix=           branch prefix (default 'hsh-svace-');
+    --branch-suffix=           branch suffix (default empty);
+    --snapshot=SNAPSHOT        snapshot name;
+    --snapshot-date            append date in '+%F-%H-%M-%S' format to snapshot (default)
+    --snapshot-no-date         do not append date to snapshot;
+    --path-prefix=FILE         path-prefix file;
+
+    -v, --verbose              enable verbose output (default);
+    -q, --quiet                try to be more quiet;
+    -h, --help                 show this text and exit.
+
+EOF
+}
+
+show_usage()
+{
+    [ -z "${1:-}" ] || echo "$1" >&2
+    show_help >&2
+    exit 1
+}
+
+get_metadata_var() {
+    local varname var
+    varname="$1"
+
+    var="$(sed -n "s/^$varname://p" "$metadata" | tail -n1)"
+    [ -n "$var" ] || return 0
+    echo "$var"
+}
+
+get_metadata_path() {
+    local varname var path
+    varname="$1"
+
+    var="$(get_metadata_var $varname)"
+    [ -n "$var" ] || return 0
+    path="$metadata_dir/$(basename $var)"
+    echo "$path"
+}
+
+fatal() {
+    echo "$1" >&2
+    exit 1
+}
+
+PROG=hsh-svace-svacer-import
+TEMP=$(getopt -n $PROG -o "h,v,q" -l "svace-dir:,store:,outdir:,svace:,svacer:,metadata:,project:,branch:,branch-prefix:,branch-suffix:,snapshot:,build-hash:,snapshot-date,snapshot-no-date,path-perfix:,help,verbose,quiet" -- "$@") \
+    || show_usage
+eval set -- "$TEMP"
+
+selfdir="$(dirname $(realpath $0))"
+verbose=-v
+quiet=
+
+outdir=./.svacer-dir
+svace_bin=
+svacer_bin=svacer
+
+svace_dir=
+project=
+branch=
+branch_prefix=hsh-svace-
+branch_suffix=
+snapshot=
+snapshot_date=
+path_prefix=
+build_hash=
+
+while :; do
+    case "$1" in
+        --) shift; break
+            ;;
+        --svace-dir) shift; svace_dir="$1"
+                     ;;
+        --store|--outdir) shift; outdir="$1"
+                     ;;
+        --svace) shift; svace_bin="$1"
+                   ;;
+        --svacer) shift; svacer_bin="$1"
+                   ;;
+        --metadata) shift; metadata="$1"
+                   ;;
+
+        --project) shift; project="$1"
+                   ;;
+        --branch) shift; branch="$1"
+                   ;;
+        --branch-prefix) shift; branch_prefix="$1"
+                   ;;
+        --branch-suffix) shift; branch_suffix="$1"
+                   ;;
+        --snapshot) shift; snapshot="$1"
+                   ;;
+        --build-hash) shift; build_hash="$1"
+                   ;;
+
+        --snapshot-date) shift; snapshot_date=1
+                   ;;
+        --snapshot-no-date) shift; snapshot_date=
+                   ;;
+
+        --path-prefix) shift; path_prefix="$1"
+                       ;;
+
+        -v|--verbose) verbose=-v
+                    quiet=
+                    ;;
+        -q|--quiet) verbose=
+                    quiet=-q
+                    ;;
+        -h|--help)
+            show_help
+            exit 0
+            ;;
+        *) show_usage "Unrecognized option: $1"
+           ;;
+    esac
+    shift
+done
+
+
+# load metadata
+if [ -n "${metadata:-}" ]; then
+
+    [ -f "$metadata" ] || fatal "No such metadata file: $metadata"
+
+    metadata_dir="$(dirname $(realpath $metadata))"
+
+    project="${project:-$(get_metadata_var project)}"
+    branch="${branch:-$(get_metadata_var branch)}"
+    snapshot="${snapshot:-$(get_metadata_var snapshot)}"
+    path_prefix="${path_prefix:-$(get_metadata_path path-prefix)}"
+    svace_dir="${svace_dir:-$(get_metadata_path svace-dir)}"
+fi
+
+# check required args
+[ -n "$svace_dir" ] || \
+    fatal "Required parameter 'svace-dir' is not specified either as an argument or in the metadata file."
+[ -n "$project" ] || \
+    fatal "Required parameter 'project' is not specified either as an argument or in the metadata file."
+[ -n "$branch" ] || \
+    fatal "Required parameter 'branch' is not specified either as an argument or in the metadata file."
+[ -n "$snapshot" ] || \
+    fatal "Required parameter 'snapshot' is not specified either as an argument or in the metadata file."
+
+run()
+{
+    [ -z "${verbose:-}" ] || echo "Executing: $*"
+    "$@"
+}
+
+run $svacer_bin import \
+    ${outdir:+--store "$outdir"} \
+    ${svace_bin:+--svace "$svace_bin"}\
+    ${path_prefix:+--path-prefix "$path_prefix"} \
+    --project "$project" \
+    --branch "${branch_prefix}${branch}${branch_suffix}" \
+    --snapshot "${snapshot}${snapshot_date:+_$(date +%F-%H-%M-%S)}" \
+    --svace-dir $@ "$svace_dir"
