@@ -28,6 +28,7 @@ Options:
     --outdir=DIR               directory for results (default .)
     --build-only               skip svace analysis, just build;
     -r, --rebuild              use existing hasher;
+    -v, --verbose              enable verbose output (default);
     -q, --quiet                try to be more quiet;
     -h, --help                 show this text and exit.
 
@@ -42,7 +43,7 @@ show_usage()
 }
 
 PROG=hsh-svace
-TEMP=$(getopt -n $PROG -o "r,h,q" -l "rebuild,build-only,workdir:,outdir:,help,quiet" -- "$@") \
+TEMP=$(getopt -n $PROG -o "r,h,v,q" -l "rebuild,build-only,workdir:,outdir:,help,verbose,quiet" -- "$@") \
     || show_usage
 eval set -- "$TEMP"
 
@@ -63,7 +64,10 @@ while :; do
                    workdir_from_opt=1
                    ;;
         --outdir) shift; outdir="$1"
-                     ;;
+                  ;;
+        -v|--verbose) verbose=-v
+                      quiet=
+                      ;;
         -q|--quiet) verbose=
                     quiet=-q
                     ;;
