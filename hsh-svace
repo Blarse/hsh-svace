@@ -106,15 +106,28 @@ pkgtar="$1"
     ${apt_config:+--apt-config "$apt_config"} \
     --workdir "$workdir"
 
+install_deps_log="$(mktemp -t hsh-rebuild.log.XXXXXXXXXX)"
+trap "rm -f $install_deps_log" EXIT
+
+verbose_stderr=/dev/stderr
+[ "${verbose:-}" = "-v" ] || verbose_stderr="/dev/null"
+
 # install deps
-hsh-rebuild $verbose \
+hsh-rebuild -v \
      --install-only \
      --workdir "$workdir" \
-     "$pkgtar"
+     "$pkgtar" 2>&1 | \
+    tee "$install_deps_log" 1>&2 >$verbose_stderr
+
+# Hack to avoid recalculating mountpoints:
+# Take mountpoints from hsh-rebuild log
+# NOTE(egori): hsh-rebuild must be run in verbose mode
+build_mountpoints="$(sed -n 's/hsh-rebuild: calculated mount points: //p' \
+     $install_deps_log | tail -n1)"
 
 # run build
 hsh-run $verbose \
-        --mountpoints=/proc,/opt,/dev/pts,/dev/shm,/dev/kvm \
+        --mountpoints="$build_mountpoints,/proc,/opt" \
         --execute="$selfdir/hsh-svace-build.sh" \
         "$workdir" -- $quiet
 
