@@ -48,6 +48,7 @@ while :; do
     shift
 done
 
+set -o pipefail
 ${verbose:+set -x}
 
 /opt/svace/bin/svace warning all true --svace-dir $HOME/out/svace-dir 2>&1 | \

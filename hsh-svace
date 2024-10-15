@@ -137,7 +137,12 @@ if [ -n "${analyze:-}" ]; then
     share_network=1 hsh-run $verbose \
                     --mountpoints=/proc,/opt,/var/hasplm \
                     --execute="$selfdir/hsh-svace-analyze.sh" \
-                    "$workdir" -- $quiet
+                    "$workdir" -- $quiet || \
+        {
+            echo "WARNING: 'svace analyze' failed!" >&2
+            echo "Make sure that you have set up a hasher for analysis." >&2
+            echo "The output archive contains only the results of 'svace build'" >&2
+        }
 fi
 
 [ ! -f "$outdir/hsh-svace-results.tar" ] || \
