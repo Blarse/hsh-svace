@@ -25,7 +25,7 @@ Usage: $PROG [options] [<path-to-workdir>] <package>
 
 Options:
     --workdir=DIR              path to workdir to use (default ~/hasher);
-    --outdir=DIR               directory for results (default .)
+    --outdir=DIR               directory for results (default .);
     --build-only               skip svace analysis, just build;
     -r, --rebuild              use existing hasher;
     -v, --verbose              enable verbose output (default);
@@ -105,10 +105,10 @@ pkgtar="$1"
 # init hasher
 [ -n "${rebuild:-}" ] ||
     hsh $verbose \
-    --initroot-only \
-    --without-stuff \
-    ${apt_config:+--apt-config "$apt_config"} \
-    --workdir "$workdir"
+        --initroot-only \
+        --without-stuff \
+        ${apt_config:+--apt-config "$apt_config"} \
+        --workdir "$workdir"
 
 install_deps_log="$(mktemp -t hsh-rebuild.log.XXXXXXXXXX)"
 trap "rm -f $install_deps_log" EXIT
@@ -118,9 +118,9 @@ verbose_stderr=/dev/stderr
 
 # install deps
 hsh-rebuild -v \
-     --install-only \
-     --workdir "$workdir" \
-     "$pkgtar" 2>&1 | \
+            --install-only \
+            --workdir "$workdir" \
+            "$pkgtar" 2>&1 | \
     tee "$install_deps_log" 1>&2 >$verbose_stderr
 
 # Hack to avoid recalculating mountpoints:
