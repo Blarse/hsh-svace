@@ -140,4 +140,5 @@ if [ -n "${analyze:-}" ]; then
                     "$workdir" -- $quiet
 fi
 
-mv -f "$workdir/chroot/.out/svace-results.tar" "$outdir/svace-results.tar"
+mv -f "$workdir/chroot/.out/hsh-svace-results.tar" \
+   "$outdir/hsh-svace-results.tar"

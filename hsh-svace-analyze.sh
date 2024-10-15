@@ -27,8 +27,8 @@
 #     /var/hasplm /var/hasplm bind bind,ro,nosuid,nodev,noexec 0 0
 #   - Add /var/hasplm to hasher-priv allowed_mountpoints
 # 5. Run hasher with share_network=1
-# As a result, svace-results directory with the svace-dir and metadata will
-# be available in the /.our directory.
+# As a result, hsh-svace-results.tar archive with the svace-dir and
+# metadata will be available in the /.our directory.
 
 PROG=hsh-svace-analyze
 TEMP=$(getopt -n $PROG -o "q" -l "quiet" -- "$@") || exit 1
@@ -56,8 +56,8 @@ ${verbose:+set -x}
                      --svace-dir $HOME/out/svace-dir 2>&1 | \
     tee $HOME/out/svace-analyze.log >&2
 
-rm -f /.out/svace-results.tar
-tar -cf /.out/svace-results.tar \
+rm -f /.out/hsh-svace-results.tar
+tar -cf /.out/hsh-svace-results.tar \
     --owner=user --group=user \
-    --transform 's/^.\/out/svace-results/' \
+    --transform 's/^.\/out/hsh-svace-results/' \
     -C "$HOME" ./out

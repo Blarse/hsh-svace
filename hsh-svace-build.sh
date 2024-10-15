@@ -24,8 +24,8 @@
 # `hsh-rebuild --install-only` implies both of the above
 # 3. /proc mounted
 # 4. svace distribution in /opt/svace (using bind mount from the host)
-# As a result, svace-results directory with the svace-dir and metadata will
-# be available in the /.our directory.
+# As a result, hsh-svace-results.tar archive with the svace-dir and
+# metadata will be available in the /.our directory.
 
 PROG=hsh-svace-build
 TEMP=$(getopt -n $PROG -o "q" -l "target:,quiet" -- "$@") || exit 1
@@ -104,7 +104,7 @@ sed -i -e "s|^\(/usr/src/RPM/BUILD\)\(.*\)\(-$version\)\$|\1\2\3:\2|" \
     $HOME/out/pathprefix.txt
 echo "$HOME/in/sources:/sources" >> $HOME/out/pathprefix.txt
 
-cat > $HOME/out/meta <<EOF
+cat > $HOME/out/metadata <<EOF
 project:$name
 branch:$(rpm --eval %_priority_distbranch)
 snapshot:$version-$release
@@ -116,8 +116,8 @@ EOF
 
 cp "$spec" $HOME/out
 
-rm -f /.out/svace-results.tar
-tar -cf /.out/svace-results.tar \
+rm -f /.out/hsh-svace-results.tar
+tar -cf /.out/hsh-svace-results.tar \
     --owner=user --group=user \
-    --transform 's/^.\/out/svace-results/' \
+    --transform 's/^.\/out/hsh-svace-results/' \
     -C "$HOME" ./out
