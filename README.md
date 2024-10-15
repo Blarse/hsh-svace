@@ -27,6 +27,13 @@ add `--build-only` option.
 
 Run `hsh-svace --help` to see all the options.
 
+### hsh-svace-svacer-import
+
+`hsh-svace-svacer-import` is a tool that allows to import analysis results for
+svacer with metadata from `hsh-svace-results.tar`.
+
+Run `hsh-svace-svacer-import --help` to see the usage.
+
 ## Results
 As a result, `hsh-svace` creates an archive named `hsh-svace-results.tar` and
 places it in the directory specified with `--outdir` or in the current working
