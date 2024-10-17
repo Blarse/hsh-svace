@@ -48,6 +48,7 @@ TEMP=$(getopt -n $PROG -o "r,h,v,q" -l "rebuild,build-only,apt-config:,workdir:,
     || show_usage
 eval set -- "$TEMP"
 
+rc=0
 selfdir="$(dirname $(realpath $0))"
 verbose=-v
 quiet=
@@ -144,6 +145,7 @@ if [ -n "${analyze:-}" ]; then
                     --execute="$selfdir/hsh-svace-analyze.sh" \
                     "$workdir" -- $quiet || \
         {
+            rc="$?"
             echo "WARNING: 'svace analyze' failed!" >&2
             echo "Make sure that you have set up a hasher for analysis." >&2
             echo "The output archive contains only the results of 'svace build'" >&2
@@ -155,3 +157,5 @@ fi
 
 mv -f "$workdir/chroot/.out/hsh-svace-results.tar" \
    "$outdir/hsh-svace-results.tar"
+
+exit "$rc"
