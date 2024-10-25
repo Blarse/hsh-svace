@@ -102,7 +102,7 @@ branch=
 branch_prefix=hsh-svace-
 branch_suffix=
 snapshot=
-snapshot_date=
+snapshot_date=1
 path_prefix=
 build_hash=
 
