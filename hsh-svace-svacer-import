@@ -134,9 +134,9 @@ while :; do
         --build-hash) shift; build_hash="$1"
                    ;;
 
-        --snapshot-date) shift; snapshot_date=1
+        --snapshot-date) snapshot_date=1
                    ;;
-        --snapshot-no-date) shift; snapshot_date=
+        --snapshot-no-date) snapshot_date=
                    ;;
 
         --path-prefix) shift; path_prefix="$1"
