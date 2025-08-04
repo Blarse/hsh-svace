@@ -47,6 +47,7 @@ while :; do
     shift
 done
 
+set -o pipefail
 ${verbose:+set -x}
 
 cd "$HOME/in"

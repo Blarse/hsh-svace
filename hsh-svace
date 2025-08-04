@@ -1,5 +1,7 @@
 #!/bin/bash -efu
 
+set -o pipefail
+
 # This file is part of hsh-svace.
 #
 # Copyright (C) 2024  Egor Ignatov <egori@altlinux.org>
