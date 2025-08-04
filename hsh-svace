@@ -39,7 +39,7 @@ EOF
 
 show_usage()
 {
-    [ -z "${1:-}" ] || echo "$1" >&2
+    [ -z "${1:-}" ] || echo -e "$@" >&2
     show_help >&2
     exit 1
 }
@@ -114,7 +114,7 @@ if [ -n "$analyze" ] && [ -z "$hasp_serveraddr" ]; then
 fi
 
 # init hasher
-[ -n "${rebuild:-}" ] ||
+[ -n "$rebuild" ] ||
     hsh $verbose \
         --initroot-only \
         --without-stuff \
@@ -125,7 +125,7 @@ install_deps_log="$(mktemp -t hsh-rebuild.log.XXXXXXXXXX)"
 trap "rm -f $install_deps_log" EXIT
 
 verbose_stderr=/dev/stderr
-[ "${verbose:-}" = "-v" ] || verbose_stderr="/dev/null"
+[ "$verbose" = "-v" ] || verbose_stderr="/dev/null"
 
 # install deps
 hsh-rebuild -v \
@@ -147,7 +147,7 @@ hsh-run $verbose \
         "$workdir" -- $quiet
 
 # run analyze
-if [ -n "${analyze:-}" ]; then
+if [ -n "$analyze" ]; then
     hsh-run $verbose --rooter --workdir "$workdir" -- sh -c 'mkdir -p /var/hasplm'
     share_network=1 hsh-run $verbose \
                     --mountpoints=/proc,/opt \
@@ -162,9 +162,9 @@ if [ -n "${analyze:-}" ]; then
 fi
 
 [ ! -f "$outdir/hsh-svace-results.tar" ] || \
-    mv "$outdir/hsh-svace-results.tar" "$outdir/hsh-svace-results.tar.bak"
+    mv -f "$outdir/hsh-svace-results.tar" "$outdir/hsh-svace-results.tar.bak"
 
-mv -f "$workdir/chroot/.out/hsh-svace-results.tar" \
+cp -f "$workdir/chroot/.out/hsh-svace-results.tar" \
    "$outdir/hsh-svace-results.tar"
 
 exit "$rc"
