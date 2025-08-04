@@ -1,7 +1,7 @@
 %define _unpackaged_files_terminate_build 1
 
 Name: hsh-svace
-Version: 1.5
+Version: 1.6
 Release: alt1
 
 Summary: Run SVACE in hasher
@@ -42,6 +42,9 @@ install -Dm755 ./hsh-svace-svacer-import -t %buildroot%_bindir
 %_libexecdir/hsh-svace/*
 
 %changelog
+* Mon Aug 04 2025 Egor Ignatov <egori@altlinux.org> 1.6-alt1
+- Replace HASP license server bind mount with proper config file setup.
+
 * Thu Nov 28 2024 Egor Ignatov <egori@altlinux.org> 1.5-alt1
 - hsh-svace-svacer-import: fix argument parsing
 
