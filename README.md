@@ -63,19 +63,6 @@ You may need to restart hasher-priv in order for this to start working.
 
 > NOTE: to only mount svace distribution use /opt/svace instead of /opt.
 
-### Additional configuration for analysis
-Svace analysis stage requires configured haspd license server. The description
-of how to set up such a server is beyond the scope here. I assume that it is
-configured on the host, and will only describe how to use it in a hasher
-environment.
-
-Configure /var/hasplm mountpoint just as described in the above
-section. For `/etc/hasher-priv/fstab` use:
-```
-/var/hasplm /var/hasplm bind bind,ro,nosuid,nodev,noexec 0 0
-```
-Аdd it to `allowed_mountpoints`. Restart hasher-priv, and that should be it.
-
 # License
 This project is licensed under the terms of the GNU GPLv3 license.
 
