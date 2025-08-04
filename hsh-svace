@@ -28,6 +28,7 @@ Options:
     --outdir=DIR               directory for results (default .);
     --build-only               skip svace analysis, just build;
     --apt-config=FILE          path to custom apt.conf file;
+    -S, --hasp-serveraddr      hasp server address for svace license;
     -r, --rebuild              use existing hasher;
     -v, --verbose              enable verbose output (default);
     -q, --quiet                try to be more quiet;
@@ -44,7 +45,7 @@ show_usage()
 }
 
 PROG=hsh-svace
-TEMP=$(getopt -n $PROG -o "r,h,v,q" -l "rebuild,build-only,apt-config:,workdir:,outdir:,help,verbose,quiet" -- "$@") \
+TEMP=$(getopt -n $PROG -o "r,h,S:,v,q" -l "rebuild,build-only,hasp-serveraddr:,apt-config:,workdir:,outdir:,help,verbose,quiet" -- "$@") \
     || show_usage
 eval set -- "$TEMP"
 
@@ -57,6 +58,7 @@ rebuild=
 workdir_from_opt=
 workdir=$HOME/hasher
 outdir="$PWD"
+hasp_serveraddr="${hasp_serveraddr:-}"
 
 while :; do
     case "$1" in
@@ -78,6 +80,8 @@ while :; do
         --build-only) analyze=
                       ;;
         --apt-config) shift; apt_config="$1"
+                      ;;
+        -S|--hasp-serveraddr) shift; hasp_serveraddr="$1"
                       ;;
         -h|--help)
             show_help
@@ -103,6 +107,11 @@ outdir="$(realpath $outdir)"
 
 [ "$#" -ge 1 ] || show_usage 'Insufficient arguments.'
 pkgtar="$1"
+
+if [ -n "$analyze" ] && [ -z "$hasp_serveraddr" ]; then
+    show_usage 'You have to set hasp serveraddr with -S option or hasp_serveraddr env variable.' \
+               '\nTo disable analyze stage use --build-only option.'
+fi
 
 # init hasher
 [ -n "${rebuild:-}" ] ||
@@ -141,9 +150,9 @@ hsh-run $verbose \
 if [ -n "${analyze:-}" ]; then
     hsh-run $verbose --rooter --workdir "$workdir" -- sh -c 'mkdir -p /var/hasplm'
     share_network=1 hsh-run $verbose \
-                    --mountpoints=/proc,/opt,/var/hasplm \
+                    --mountpoints=/proc,/opt \
                     --execute="$selfdir/hsh-svace-analyze.sh" \
-                    "$workdir" -- $quiet || \
+                    "$workdir" -- $quiet -S "$hasp_serveraddr" || \
         {
             rc="$?"
             echo "WARNING: 'svace analyze' failed!" >&2

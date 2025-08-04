@@ -20,32 +20,44 @@
 
 # This script runs inside hasher. It requires:
 # 1. /proc mounted
-# 2. svace distribution in /opt/svace (using bind mount from the host)
+# 2. SVACE distribution in /opt/svace (using bind mount from the host)
 # 3. /usr/src/out/svace-dir after hsh-svace-build.sh
-# 4. Configured bind mount for /var/hasplm:
-#   - Add following line to /etc/hasher-priv/fstab:
-#     /var/hasplm /var/hasplm bind bind,ro,nosuid,nodev,noexec 0 0
-#   - Add /var/hasplm to hasher-priv allowed_mountpoints
+# 4. Configured Sentinel server (pass address by -S or --hasp-serveraddr option)
 # 5. Run hasher with share_network=1
 # As a result, hsh-svace-results.tar archive with the svace-dir and
 # metadata will be available in the /.our directory.
 
 PROG=hsh-svace-analyze
-TEMP=$(getopt -n $PROG -o "q" -l "quiet" -- "$@") || exit 1
+TEMP=$(getopt -n $PROG -o "S:,q" -l "hasp-serveraddr:,quiet" -- "$@") || exit 1
 eval set -- "$TEMP"
 
 verbose=-v
+hasp_serveraddr=localhost
 while :; do
     case "$1" in
         --) shift; break
             ;;
         -q|--quiet) verbose=
                       ;;
+        -S|--hasp-serveraddr) shift; hasp_serveraddr="$1"
+                      ;;
         *) echo "Unrecognized option: $1" >&2
            exit 1
            ;;
     esac
     shift
+done
+
+# setup ISPRAS hasp license
+ISP_VENDOR_IDS='101213 36343'
+
+mkdir -p "$HOME/.hasplm"
+for vendorid in $ISP_VENDOR_IDS; do
+    cat > "$HOME/.hasplm/hasp_${vendorid}.ini" <<EOF
+[REMOTE]
+serveraddr = $hasp_serveraddr
+broadcastsearch = 0
+EOF
 done
 
 set -o pipefail
