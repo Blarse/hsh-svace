@@ -101,8 +101,13 @@ rpmbuild -bp \
 find $HOME/RPM/BUILD -maxdepth 1 -mindepth 1 -type d \
      > $HOME/out/pathprefix.txt
 
-sed -i -e "s|^\(/usr/src/RPM/BUILD\)\(.*\)\(-$version\)\$|\1\2\3:\2|" \
-    $HOME/out/pathprefix.txt
+# Old way (strip version from directory name):
+#sed -i -e "s|^\(/usr/src/RPM/BUILD\)\(.*\)\(-$version\)\(.*\)\$|\1\2\3\4:\2\4|" \
+#    $HOME/out/pathprefix.txt
+
+# New way (set pathprefix to root):
+sed -i -e "s|$|:|" $HOME/out/pathprefix.txt
+
 echo "$HOME/in/sources:/sources" >> $HOME/out/pathprefix.txt
 
 cat > $HOME/out/metadata <<EOF
