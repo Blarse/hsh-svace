@@ -1,172 +1,115 @@
-#!/bin/bash -efu
-
-set -o pipefail
-
-# This file is part of hsh-svace.
+#!/bin/sh -ef
+#
+# Run svace static analysis on source package in hasher chroot.
 #
 # Copyright (C) 2024  Egor Ignatov <egori@altlinux.org>
 #
-# hsh-svace is free software: you can redistribute it and/or modify it
-# under the  terms of the GNU  General Public License as  published by
-# the Free  Software Foundation, either  version 3 of the  License, or
-# (at your option) any later version.
+# SPDX-License-Identifier: GPL-3.0-or-later
 #
-# hsh-svace is  distributed in the  hope that  it will be  useful, but
-# WITHOUT  ANY   WARRANTY;  without  even  the   implied  warranty  of
-# MERCHANTABILITY or  FITNESS FOR  A PARTICULAR  PURPOSE. See  the GNU
-# General Public License for more details.
-#
-# You should  have received a copy  of the GNU General  Public License
-# along with hsh-svace. If not, see <https://www.gnu.org/licenses/>.
+
+. hsh-sh-functions
+. hsh-sh-rebuild-functions
 
 show_help()
 {
-    cat <<EOF
-Usage: $PROG [options] [<path-to-workdir>] <package>
-  or:  $PROG [options] --workdir=DIR <package>
+	cat <<EOF
+hsh-svace - run svace static analysis on source package in hasher chroot.
+
+Usage: $PROG [options] [<path-to-workdir>] <source-package>
+  or:  $PROG [options] --workdir=DIR <source-package>
+
+<path-to-workdir> must be valid writable directory.
 
 Options:
-    --workdir=DIR              path to workdir to use (default ~/hasher);
-    --outdir=DIR               directory for results (default .);
-    --build-only               skip svace analysis, just build;
-    --apt-config=FILE          path to custom apt.conf file;
-    -S, --hasp-serveraddr      hasp server address for svace license;
-    -r, --rebuild              use existing hasher;
-    -v, --verbose              enable verbose output (default);
-    -q, --quiet                try to be more quiet;
-    -h, --help                 show this text and exit.
+  --apt-config=FILE           path to custom apt.conf file;
+  --build-only                skip svace analysis, just build;
+  --excludedocs               do not install documentation files;
+  --hasp-serveraddr=ADDR      hasp server address for svace license;
+  --hasher-priv-dir=DIR       hasher-priv directory;
+  --mountpoints=LIST          comma-separated list of known mount points;
+  --nodeps                    ignore package dependencies (dangerous);
+  --number=NUMBER             subconfig identifier;
+  --outdir=DIR                directory for results (default .);
+  --rebuild                   use existing hasher;
+  --target=ARCH               target architecture;
+  --wait-lock                 wait for workdir and hasher-priv locks;
+  --no-wait-lock              do not wait for workdir and hasher-priv locks;
+  --without-stuff             do not generate apt index files;
+  --with-stuff                generate apt index files;
+  --workdir=DIR               path to workdir to use;
+  -S ADDR                     short form for --hasp-serveraddr;
+  -q, --quiet                 try to be more quiet;
+  -v, --verbose               print a message for each action;
+  -V, --version               print program version and exit;
+  -h, --help                  show this text and exit.
+
+Report bugs to https://bugzilla.altlinux.org/
 
 EOF
+	exit
 }
 
-show_usage()
-{
-    [ -z "${1:-}" ] || echo -e "$@" >&2
-    show_help >&2
-    exit 1
-}
-
-PROG=hsh-svace
-TEMP=$(getopt -n $PROG -o "r,h,S:,v,q" -l "rebuild,build-only,hasp-serveraddr:,apt-config:,workdir:,outdir:,help,verbose,quiet" -- "$@") \
-    || show_usage
+TEMP=`getopt -n $PROG -o S:,$getopt_common_opts \
+	-l apt-config:,build-only,excludedocs,hasp-serveraddr:,hasher-priv-dir:,mountpoints:,no-lock,nodeps,number:,outdir:,rebuild,target:,wait-lock,no-wait-lock,without-stuff,with-stuff,workdir:,$getopt_common_longopts \
+	-- "$@"` ||
+	show_usage
+prepare_cgroup "$TEMP" "$0" "$@"
 eval set -- "$TEMP"
 
-rc=0
-selfdir="$(dirname "$(realpath "$0")")"
-verbose=-v
-quiet=
-analyze=1
+build_only=
+nodeps=
 rebuild=
 workdir_from_opt=
-workdir=$HOME/hasher
-outdir="$PWD"
 hasp_serveraddr="${hasp_serveraddr:-}"
+outdir="$saved_cwd"
 
 while :; do
-    case "$1" in
-        --) shift; break
-            ;;
-        --workdir) shift; workdir="$1"
-                   workdir_from_opt=1
-                   ;;
-        --outdir) shift; outdir="$1"
-                  ;;
-        -v|--verbose) verbose=-v
-                      quiet=
-                      ;;
-        -q|--quiet) verbose=
-                    quiet=-q
-                    ;;
-        -r|--rebuild) rebuild=1
-                      ;;
-        --build-only) analyze=
-                      ;;
-        --apt-config) shift; apt_config="$1"
-                      ;;
-        -S|--hasp-serveraddr) shift; hasp_serveraddr="$1"
-                      ;;
-        -h|--help)
-            show_help
-            exit 0
-            ;;
-        *) show_usage "Unrecognized option: $1"
-           ;;
-    esac
-    shift
+	case "$1" in
+		--apt-config) shift; apt_config="$1"
+			;;
+		--build-only) build_only=1
+			;;
+		--excludedocs) exclude_docs=--excludedocs
+			;;
+		-S|--hasp-serveraddr) shift; hasp_serveraddr="$1"
+			;;
+		--hasher-priv-dir)
+			hasher_priv_dir="$(opt_check_dir "$1" "$2")"
+			shift
+			;;
+		--mountpoints) shift; known_mountpoints="$1"
+			;;
+		--no-lock) no_lock=1
+			;;
+		--nodeps) nodeps=--nodeps
+			;;
+		--number)
+			number="$(opt_check_number_ge_0 "$1" "$2")"
+			shift
+			;;
+		--outdir) shift; outdir="$1"
+			;;
+		--rebuild) rebuild=1
+			;;
+		--target) shift; target="$1"
+			[ -z "${target##[A-Za-z]*}" ] ||
+				fatal "--target: $target: invalid architecture."
+			;;
+		--wait-lock) lock_nowait=
+			;;
+		--no-wait-lock) lock_nowait=1
+			;;
+		--without-stuff) no_stuff=1
+			;;
+		--with-stuff) no_stuff=
+			;;
+		--workdir) shift; workdir="$1"
+			workdir_from_opt=1
+			;;
+		--) shift; break
+			;;
+		*) parse_common_option "$1"
+			;;
+	esac
+	shift
 done
-
-if [ -z "$workdir_from_opt" ]; then
-    if [ -d "${1-}" ]; then
-        # At least one argument.
-        [ "$#" -ge 1 ] || show_usage 'Insufficient arguments.'
-        workdir="$1"
-        shift
-    fi
-fi
-
-[ -d "$outdir" ] || show_usage 'Outdir does not exist or not a directory'
-outdir="$(realpath "$outdir")"
-
-[ "$#" -ge 1 ] || show_usage 'Insufficient arguments.'
-pkgtar="$1"
-
-if [ -n "$analyze" ] && [ -z "$hasp_serveraddr" ]; then
-    show_usage 'You have to set hasp serveraddr with -S option or hasp_serveraddr env variable.' \
-               '\nTo disable analyze stage use --build-only option.'
-fi
-
-# init hasher
-[ -n "$rebuild" ] ||
-    hsh $verbose \
-        --initroot-only \
-        --without-stuff \
-        ${apt_config:+--apt-config "$apt_config"} \
-        --workdir "$workdir"
-
-install_deps_log="$(mktemp -t hsh-rebuild.log.XXXXXXXXXX)"
-trap 'rm -f "$install_deps_log"' EXIT
-
-verbose_stderr=/dev/stderr
-[ "$verbose" = "-v" ] || verbose_stderr="/dev/null"
-
-# install deps
-hsh-rebuild -v \
-            --install-only \
-            --workdir "$workdir" \
-            "$pkgtar" 2>&1 | \
-    tee "$install_deps_log" 1>&2 >$verbose_stderr
-
-# Hack to avoid recalculating mountpoints:
-# Take mountpoints from hsh-rebuild log
-# NOTE(egori): hsh-rebuild must be run in verbose mode
-build_mountpoints="$(sed -n 's/hsh-rebuild: calculated mount points: //p' \
-     $install_deps_log | tail -n1)"
-
-# run build
-hsh-run $verbose \
-        --mountpoints="$build_mountpoints,/proc,/opt" \
-        --execute="$selfdir/hsh-svace-build.sh" \
-        "$workdir" -- $quiet
-
-# run analyze
-if [ -n "$analyze" ]; then
-    hsh-run $verbose --rooter --workdir "$workdir" -- sh -c 'mkdir -p /var/hasplm'
-    share_network=1 hsh-run $verbose \
-                    --mountpoints=/proc,/opt \
-                    --execute="$selfdir/hsh-svace-analyze.sh" \
-                    "$workdir" -- $quiet -S "$hasp_serveraddr" || \
-        {
-            rc="$?"
-            echo "WARNING: 'svace analyze' failed!" >&2
-            echo "Make sure that you have set up a hasher for analysis." >&2
-            echo "The output archive contains only the results of 'svace build'" >&2
-        }
-fi
-
-[ ! -f "$outdir/hsh-svace-results.tar" ] || \
-    mv -f "$outdir/hsh-svace-results.tar" "$outdir/hsh-svace-results.tar.bak"
-
-cp -f "$workdir/chroot/.out/hsh-svace-results.tar" \
-   "$outdir/hsh-svace-results.tar"
-
-exit "$rc"
