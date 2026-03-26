@@ -217,6 +217,32 @@ else
 		#
 fi
 
+# Install svace into chroot.
+if [ -z "$bind_svace" ]; then
+	# Write desired version if specified.
+	if [ -n "$svace_version" ]; then
+		create_entry_header
+		cat >>"$entry" <<__EOF__
+printf '%s\n' "$(quote_shell "$svace_version")" \
+	>/etc/rpm-build-svace-version
+__EOF__
+
+		requested_mountpoints= \
+		wlimit_time_elapsed=$wlimit_time_short \
+		wlimit_time_idle=$wlimit_time_short \
+			chrootuid1 </dev/null ||
+			fatal "Failed to write svace version."
+	fi
+
+	share_network=1 \
+	hsh-install --no-lock "$workdir" \
+		${hasher_priv_dir:+--hasher-priv-dir="$hasher_priv_dir"} \
+		${quiet:+$quiet} \
+		${verbose:+$verbose} \
+		${number:+--number=$number} \
+		-- rpm-build-svace
+fi
+
 # Build stage — skip in analyze-only mode.
 if [ -z "$analyze_only" ]; then
 	# Install source package.
