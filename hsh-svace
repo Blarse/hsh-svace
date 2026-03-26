@@ -13,6 +13,12 @@ selfdir="$(dirname "$(realpath "$0")")"
 . hsh-sh-functions
 . hsh-sh-rebuild-functions
 
+stage()
+{
+	[ -z "$quiet" ] || return 0
+	message "$*"
+}
+
 show_help()
 {
 	cat <<EOF
@@ -185,6 +191,7 @@ if [ -n "$rebuild" ]; then
 	[ -d "$chroot" ] || fatal "$chroot: cannot find chroot."
 	deduce_lock_hasher_priv
 else
+	stage "initializing chroot..."
 	rm -rf aptbox
 	if [ -d chroot ]; then
 		deduce_lock_hasher_priv
@@ -220,6 +227,7 @@ else
 		#
 fi
 
+stage "installing svace..."
 # Install svace into chroot.
 if [ -z "$bind_svace" ]; then
 	# Write desired version if specified.
@@ -246,6 +254,7 @@ __EOF__
 		-- rpm-build-svace
 fi
 
+stage "verifying svace..."
 # Verify svace is available in chroot.
 create_entry_header
 cat >>"$entry" <<'__EOF__'
@@ -261,6 +270,7 @@ wlimit_time_idle=$wlimit_time_short \
 # Build stage — skip in analyze-only mode.
 if [ -z "$analyze_only" ]; then
 	# Install source package.
+	stage "installing source package..."
 	install_source_package
 
 	case "$source_package_type" in
@@ -270,10 +280,12 @@ if [ -z "$analyze_only" ]; then
 
 	# Install build dependencies.
 	if [ -z "$nodeps" ]; then
+		stage "installing build dependencies..."
 		install_deps_pkg
 	fi
 
 	# Install build helper script into chroot.
+	stage "running svace build..."
 	install -pm755 $verbose "$selfdir/hsh-svace-build.sh" \
 		chroot/.host/svace-build >&2
 
@@ -284,6 +296,7 @@ if [ -z "$analyze_only" ]; then
 	cat >>"$entry" <<__EOF__
 exec /.host/svace-build \
 	${quiet:+$quiet} \
+	${verbose:+$verbose} \
 	--target="$(quote_shell "${target:-$def_target}")"
 __EOF__
 
@@ -297,6 +310,7 @@ fi
 
 # Load existing results for analyze-only mode.
 if [ -n "$analyze_only" ]; then
+	stage "extracting results..."
 	purge_chroot_out
 
 	install -pm644 $verbose "$source" \
@@ -318,6 +332,7 @@ fi
 
 # Run svace analyze — skip in build-only mode.
 if [ -z "$build_only" ]; then
+	stage "running svace analyze..."
 	install -pm755 $verbose "$selfdir/hsh-svace-analyze.sh" \
 		chroot/.host/svace-analyze >&2
 
@@ -325,6 +340,7 @@ if [ -z "$build_only" ]; then
 	cat >>"$entry" <<__EOF__
 exec /.host/svace-analyze \
 	${quiet:+$quiet} \
+	${verbose:+$verbose} \
 	-S "$(quote_shell "$hasp_serveraddr")"
 __EOF__
 
@@ -335,11 +351,12 @@ __EOF__
 		chrootuid2 </dev/null &&
 		verbose "$sname: svace analyze complete." || {
 			rc=$?
-			message "WARNING: 'svace analyze' failed!"
-			message "The output archive contains only the results of 'svace build'"
+			message "$sname: svace analyze failed."
+			message "The output archive contains only the results of 'svace build'."
 		}
 fi
 
+stage "copying results..."
 # Copy results.
 if [ -z "$build_only" ]; then
 	results_tar=hsh-svace-results-analyzed.tar
