@@ -184,3 +184,77 @@ else
 		${number:+--number=$number} \
 		#
 fi
+
+# Install source package.
+install_source_package
+
+case "$source_package_type" in
+	src.rpm|pkg.tar) ;;
+	*) fatal "$sname: unsupported source package type: $source_package_type" ;;
+esac
+
+# Install build dependencies.
+if [ -z "$nodeps" ]; then
+	install_deps_pkg
+fi
+
+# Determine selfdir for helper scripts.
+selfdir="$(dirname "$(realpath "$0")")"
+
+# Install helper scripts into chroot.
+install -pm755 $verbose "$selfdir/hsh-svace-build.sh" \
+	chroot/.host/svace-build >&2
+[ -n "$build_only" ] ||
+	install -pm755 $verbose "$selfdir/hsh-svace-analyze.sh" \
+		chroot/.host/svace-analyze >&2
+
+# Run svace build.
+purge_chroot_out
+
+create_entry_header
+cat >>"$entry" <<__EOF__
+exec /.host/svace-build \
+	${quiet:+$quiet} \
+	--target="$(quote_shell "${target:-$def_target}")"
+__EOF__
+
+requested_mountpoints="$required_mountpoints,/proc,/opt" \
+wlimit_time_elapsed=$wlimit_time_long \
+wlimit_time_idle=$wlimit_time_long \
+	chrootuid2 </dev/null &&
+	verbose "$sname: svace build complete." ||
+	fatal "$sname: svace build failed."
+
+# Run svace analyze.
+# Note: $HOME/.hasplm is created by the analyze script itself.
+if [ -z "$build_only" ]; then
+	create_entry_header
+	cat >>"$entry" <<__EOF__
+exec /.host/svace-analyze \
+	${quiet:+$quiet} \
+	-S "$(quote_shell "$hasp_serveraddr")"
+__EOF__
+
+	share_network=1 \
+	requested_mountpoints="/proc,/opt" \
+	wlimit_time_elapsed=$wlimit_time_long \
+	wlimit_time_idle=$wlimit_time_long \
+		chrootuid2 </dev/null &&
+		verbose "$sname: svace analyze complete." || {
+			rc=$?
+			message "WARNING: 'svace analyze' failed!"
+			message "The output archive contains only the results of 'svace build'"
+		}
+fi
+
+# Copy results.
+[ ! -f "$outdir/hsh-svace-results.tar" ] ||
+	mv -f "$outdir/hsh-svace-results.tar" \
+	   "$outdir/hsh-svace-results.tar.bak"
+
+cp -f "chroot/.out/hsh-svace-results.tar" \
+	"$outdir/hsh-svace-results.tar" &&
+	verbose "Results saved to $outdir/hsh-svace-results.tar" ||
+	fatal "Failed to copy results."
+
+exit "$rc"
