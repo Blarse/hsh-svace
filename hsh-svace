@@ -31,9 +31,9 @@ Options:
   --build-only                skip svace analysis, just build;
   --excludedocs               do not install documentation files;
   --hasp-serveraddr=ADDR      hasp server address for svace license;
+  --hasher-priv-dir=DIR       hasher-priv directory;
   --install-svace[=VER]       install svace from rpm-build-svace package
                               (default; VER overrides version);
-  --hasher-priv-dir=DIR       hasher-priv directory;
   --mountpoints=LIST          comma-separated list of known mount points;
   --nodeps                    ignore package dependencies (dangerous);
   --number=NUMBER             subconfig identifier;
@@ -89,11 +89,11 @@ while :; do
 			;;
 		-S|--hasp-serveraddr) shift; hasp_serveraddr="$1"
 			;;
-		--install-svace) shift; install_svace=1; svace_version="$1"
-			;;
 		--hasher-priv-dir)
 			hasher_priv_dir="$(opt_check_dir "$1" "$2")"
 			shift
+			;;
+		--install-svace) shift; install_svace=1; svace_version="$1"
 			;;
 		--mountpoints) shift; known_mountpoints="$1"
 			;;
