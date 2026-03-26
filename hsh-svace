@@ -52,7 +52,7 @@ TEMP=$(getopt -n $PROG -o "r,h,S:,v,q" -l "rebuild,build-only,hasp-serveraddr:,a
 eval set -- "$TEMP"
 
 rc=0
-selfdir="$(dirname $(realpath $0))"
+selfdir="$(dirname "$(realpath "$0")")"
 verbose=-v
 quiet=
 analyze=1
@@ -105,7 +105,7 @@ if [ -z "$workdir_from_opt" ]; then
 fi
 
 [ -d "$outdir" ] || show_usage 'Outdir does not exist or not a directory'
-outdir="$(realpath $outdir)"
+outdir="$(realpath "$outdir")"
 
 [ "$#" -ge 1 ] || show_usage 'Insufficient arguments.'
 pkgtar="$1"
@@ -124,7 +124,7 @@ fi
         --workdir "$workdir"
 
 install_deps_log="$(mktemp -t hsh-rebuild.log.XXXXXXXXXX)"
-trap "rm -f $install_deps_log" EXIT
+trap 'rm -f "$install_deps_log"' EXIT
 
 verbose_stderr=/dev/stderr
 [ "$verbose" = "-v" ] || verbose_stderr="/dev/null"

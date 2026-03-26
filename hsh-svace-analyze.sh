@@ -1,4 +1,4 @@
-#!/bin/sh -le
+#!/bin/bash -le
 
 # This file is part of hsh-svace.
 #

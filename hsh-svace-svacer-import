@@ -84,11 +84,11 @@ fatal() {
 }
 
 PROG=hsh-svace-svacer-import
-TEMP=$(getopt -n $PROG -o "h,v,q" -l "svace-dir:,store:,outdir:,svace:,svacer:,metadata:,project:,branch:,branch-prefix:,branch-suffix:,snapshot:,build-hash:,snapshot-date,snapshot-no-date,path-perfix:,help,verbose,quiet" -- "$@") \
+TEMP=$(getopt -n $PROG -o "h,v,q" -l "svace-dir:,store:,outdir:,svace:,svacer:,metadata:,project:,branch:,branch-prefix:,branch-suffix:,snapshot:,build-hash:,snapshot-date,snapshot-no-date,path-prefix:,help,verbose,quiet" -- "$@") \
     || show_usage
 eval set -- "$TEMP"
 
-selfdir="$(dirname $(realpath $0))"
+selfdir="$(dirname "$(realpath "$0")")"
 verbose=-v
 quiet=
 
@@ -164,7 +164,7 @@ if [ -n "${metadata:-}" ]; then
 
     [ -f "$metadata" ] || fatal "No such metadata file: $metadata"
 
-    metadata_dir="$(dirname $(realpath $metadata))"
+    metadata_dir="$(dirname "$(realpath "$metadata")")"
 
     project="${project:-$(get_metadata_var project)}"
     branch="${branch:-$(get_metadata_var branch)}"
@@ -196,4 +196,4 @@ run $svacer_bin import \
     --project "$project" \
     --branch "${branch_prefix}${branch}${branch_suffix}" \
     --snapshot "${snapshot}${snapshot_date:+_$(date +%F-%H-%M-%S)}" \
-    --svace-dir $@ "$svace_dir"
+    --svace-dir "$@" "$svace_dir"
