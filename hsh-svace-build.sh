@@ -12,14 +12,16 @@
 # 3. /opt/svace available
 
 PROG=hsh-svace-build
-TEMP=$(getopt -n "$PROG" -o q -l target:,quiet -- "$@") || exit 1
+TEMP=$(getopt -n "$PROG" -o q,v -l target:,quiet,verbose -- "$@") || exit 1
 eval set -- "$TEMP"
 
-verbose=-v
+verbose=
 target=
 while :; do
 	case "$1" in
 		--target) shift; target="$1"
+			;;
+		-v|--verbose) verbose=-v
 			;;
 		-q|--quiet) verbose=
 			;;
@@ -31,6 +33,12 @@ while :; do
 	esac
 	shift
 done
+
+if [ -n "$verbose" ]; then
+	exec 3>&2
+else
+	exec 3>/dev/null
+fi
 
 set -o pipefail
 ${verbose:+set -x}
@@ -75,10 +83,10 @@ mkdir -p "$HOME/out/svace-dir"
 rpmbuild -bp \
 	--define "_specdir $HOME/in/specs" \
 	--define "_sourcedir $HOME/in/sources" \
-	"$spec" --target="$target" >&2
+	"$spec" --target="$target" >&3 2>&1
 
 /opt/svace/bin/svace init --bare "$HOME/out/svace-dir" 2>&1 |
-	tee "$HOME/out/svace-init.log" >&2
+	tee "$HOME/out/svace-init.log" >&3
 
 /opt/svace/bin/svace build -v \
 	--svace-dir="$HOME/out/svace-dir" \
@@ -88,7 +96,7 @@ rpmbuild -bp \
 	--define "_specdir $HOME/in/specs" \
 	--define "_sourcedir $HOME/in/sources" \
 	"$spec" --target="$target" 2>&1 |
-	tee "$HOME/out/svace-build.log" >&2
+	tee "$HOME/out/svace-build.log" >&3
 
 find "$HOME/RPM/BUILD" -maxdepth 1 -mindepth 1 -type d \
 	> "$HOME/out/pathprefix.txt"
