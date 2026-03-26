@@ -53,13 +53,14 @@ EOF
 }
 
 TEMP=`getopt -n $PROG -o S:,$getopt_common_opts \
-	-l apt-config:,build-only,excludedocs,hasp-serveraddr:,hasher-priv-dir:,mountpoints:,no-lock,nodeps,number:,outdir:,rebuild,target:,wait-lock,no-wait-lock,without-stuff,with-stuff,workdir:,$getopt_common_longopts \
+	-l analyze-only,apt-config:,build-only,excludedocs,hasp-serveraddr:,hasher-priv-dir:,mountpoints:,no-lock,nodeps,number:,outdir:,rebuild,target:,wait-lock,no-wait-lock,without-stuff,with-stuff,workdir:,$getopt_common_longopts \
 	-- "$@"` ||
 	show_usage
 prepare_cgroup "$TEMP" "$0" "$@"
 eval set -- "$TEMP"
 
 build_only=
+analyze_only=
 nodeps=
 rebuild=
 workdir_from_opt=
@@ -68,6 +69,8 @@ outdir="$saved_cwd"
 
 while :; do
 	case "$1" in
+		--analyze-only) analyze_only=1
+			;;
 		--apt-config) shift; apt_config="$1"
 			;;
 		--build-only) build_only=1
