@@ -2,7 +2,7 @@
 #
 # Run svace static analysis on source package in hasher chroot.
 #
-# Copyright (C) 2024  Egor Ignatov <egori@altlinux.org>
+# Copyright (C) 2024-2026  Egor Ignatov <egori@altlinux.org>
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 #

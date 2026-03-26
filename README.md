@@ -100,4 +100,4 @@ Run `hsh-svace-svacer-import --help` to see the usage.
 
 This project is licensed under the terms of the GNU GPLv3 license.
 
-Copyright (C) 2024  Egor Ignatov <egori@altlinux.org>
+Copyright (C) 2024-2026  Egor Ignatov <egori@altlinux.org>
