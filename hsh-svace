@@ -149,6 +149,10 @@ if [ -n "$build_only" ] && [ -n "$analyze_only" ]; then
 	fatal '--build-only and --analyze-only are mutually exclusive.'
 fi
 
+if [ -n "$install_svace" ] && [ -n "$bind_svace" ]; then
+	fatal '--install-svace and --bind-svace are mutually exclusive.'
+fi
+
 if [ -z "$build_only" ] && [ -z "$hasp_serveraddr" ]; then
 	if [ -n "$analyze_only" ]; then
 		show_usage 'Set hasp serveraddr with -S option or hasp_serveraddr env variable.'
