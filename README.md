@@ -1,69 +1,103 @@
 # hsh-svace
 
-Run SVACE in hasher.
+Run SVACE static analysis on source packages in hasher.
 
 https://www.ispras.ru/en/technologies/svace
 
 ## Prerequisites
 
-- SVACE installed in /opt
 - Configured hasher (https://www.altlinux.org/Hasher)
-- Extra hasher configuration for (more on this later)
+- SVACE license server (required for analysis stage)
 
 ## Usage
 
-`hsh-svace` is used like `hsh` or `hsh-rebuild`, just run it with gear command:
-```
-gear [gear_options] --hasher -- hsh-svace [hsh-svace_options]
+`hsh-svace` can be run directly on a source package (`.src.rpm`) or via gear
+from a git repository:
 
-for example:
+    hsh-svace [options] [<path-to-workdir>] <source-package>
+    gear [gear_options] --hasher -- hsh-svace [options]
 
-gear -v --commit --hasher -- hsh-svace --workdir=~/hasher
-```
+Run `hsh-svace --help` to see all options.
 
-By default hsh-svace runs both `svace build` and `svace analyze`, the latter
-requires a license key and special configuration (see below). To skip analisys
-add `--build-only` option.
+### Build and analyze (default)
 
-Run `hsh-svace --help` to see all the options.
+Runs `svace build` followed by `svace analyze`. Requires a SVACE license
+server address (`-S` or `hasp_serveraddr` env variable):
+
+    hsh-svace -S 192.168.1.100 --workdir=~/hasher package-1.0-alt1.src.rpm
+
+    gear -v --commit --hasher -- hsh-svace -S 192.168.1.100 --workdir=~/hasher
+
+### Build only
+
+Run only `svace build`, skip analysis. Does not require a license server:
+
+    hsh-svace --build-only --workdir=~/hasher package-1.0-alt1.src.rpm
+
+    gear -v --commit --hasher -- hsh-svace --build-only --workdir=~/hasher
+
+### Analyze only
+
+Run `svace analyze` on a previously built results tar (from a `--build-only`
+run). Useful for re-analyzing without rebuilding:
+
+    hsh-svace --analyze-only -S 192.168.1.100 \
+        --workdir=~/hasher hsh-svace-results.tar
+
+    gear -v --commit --hasher -- hsh-svace --analyze-only -S 192.168.1.100 \
+        --workdir=~/hasher hsh-svace-results.tar
+
+## Svace installation
+
+`hsh-svace` needs SVACE available inside the hasher chroot. There are two
+methods:
+
+### --install-svace (default)
+
+Installs the `rpm-build-svace` package into the chroot. This is the default
+method and requires no extra hasher configuration. Optionally specify a
+version:
+
+    hsh-svace --install-svace=3.5.1 ...
+
+### --bind-svace
+
+Mounts the host's `/opt` directory inside the hasher chroot via bind mount,
+using SVACE installed on the host. This requires extra hasher-priv
+configuration:
+
+1. Append `/etc/hasher-priv/fstab` with:
+
+       /opt /opt bind bind,ro,nosuid,nodev 0 0
+
+2. Add `/opt` mount point to `allowed_mountpoints` in systemwide
+   (`/etc/hasher-priv/system`) or user (`/etc/hasher-priv/user.d/$USER`)
+   configuration.
+
+3. Restart hasher-priv:
+
+       # systemctl restart hasher-privd.service
+
+> **TIP:** You can install multiple SVACE distributions to `/opt` and
+> create a symlink `/opt/svace` pointing to the relevant one.
+
+## Results
+
+`hsh-svace` creates a results archive in the directory specified with
+`--outdir` (or the current directory by default):
+
+- `hsh-svace-results.tar` — build-only results (when using `--build-only`)
+- `hsh-svace-results-analyzed.tar` — results with analysis (default or `--analyze-only`)
 
 ### hsh-svace-svacer-import
 
-`hsh-svace-svacer-import` is a tool that allows to import analysis results for
-svacer with metadata from `hsh-svace-results.tar`.
+`hsh-svace-svacer-import` imports analysis results into svacer with metadata
+from the results archive.
 
 Run `hsh-svace-svacer-import --help` to see the usage.
 
-## Results
-As a result, `hsh-svace` creates an archive named `hsh-svace-results.tar` and
-places it in the directory specified with `--outdir` or in the current working
-directory if not specified.
+## License
 
-## Extra hasher configuration
-### Configure hasher to use svace from host (required)
-`hsh-svace` mounts host's `/opt` directory inside the hasher environmet and
-expects a svace distribution there. The following hasher-priv configuration is
-required to achive this:
-
-Firstly аppend `/etc/hasher-priv/fstab` with:
-```
-/opt /opt bind bind,ro,nosuid,nodev 0 0
-```
-
-Then add /opt mount point to `allowed_mountpoints` option in systemwide
-(/etc/hasher-priv/system) or user (/etc/hasher-priv/user.d/$USER) configuration.
-
-You may need to restart hasher-priv in order for this to start working.
-```
-# systemctl restart hasher-privd.service
-```
-
-> TIP: You can install multiple svace distribution to /opt and a create symlink
->      /opt/svace pointing to the relevant one.
-
-> NOTE: to only mount svace distribution use /opt/svace instead of /opt.
-
-# License
 This project is licensed under the terms of the GNU GPLv3 license.
 
 Copyright (C) 2024  Egor Ignatov <egori@altlinux.org>
