@@ -138,6 +138,14 @@ while :; do
 	shift
 done
 
+# Set up fd 3 for hasher commands stderr:
+# verbose mode — show on stderr, otherwise — suppress.
+if [ -n "$verbose" ]; then
+	exec 3>&2
+else
+	exec 3>/dev/null
+fi
+
 if [ -z "$workdir_from_opt" ]; then
 	if [ -z "$workdir" ] || [ "$#" -ge 2 ]; then
 		# One more argument for workdir.
@@ -200,7 +208,7 @@ else
 			${quiet:+$quiet} \
 			${verbose:+$verbose} \
 			${number:+--number=$number} \
-			#
+			2>&3 #
 	else
 		allocate_lock_hasher_priv
 	fi
@@ -211,20 +219,20 @@ else
 		${quiet:+$quiet} \
 		${verbose:+$verbose} \
 		${no_stuff:+--no-stuff} \
-		#
+		2>&3 #
 	hsh-mkchroot --no-lock "$workdir" \
 		${hasher_priv_dir:+--hasher-priv-dir="$hasher_priv_dir"} \
 		${quiet:+$quiet} \
 		${verbose:+$verbose} \
 		${number:+--number=$number} \
-		#
+		2>&3 #
 	hsh-initroot --no-lock "$workdir" \
 		${hasher_priv_dir:+--hasher-priv-dir="$hasher_priv_dir"} \
 		${quiet:+$quiet} \
 		${verbose:+$verbose} \
 		${exclude_docs:+--excludedocs} \
 		${number:+--number=$number} \
-		#
+		2>&3 #
 fi
 
 stage "installing svace..."
@@ -251,7 +259,7 @@ __EOF__
 		${quiet:+$quiet} \
 		${verbose:+$verbose} \
 		${number:+--number=$number} \
-		-- rpm-build-svace
+		-- rpm-build-svace 2>&3 >&2
 fi
 
 stage "verifying svace..."
@@ -281,7 +289,7 @@ if [ -z "$analyze_only" ]; then
 	# Install build dependencies.
 	if [ -z "$nodeps" ]; then
 		stage "installing build dependencies..."
-		install_deps_pkg
+		install_deps_pkg 2>&3 >&2
 	fi
 
 	# Install build helper script into chroot.
