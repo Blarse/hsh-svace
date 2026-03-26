@@ -20,10 +20,12 @@ hsh-svace - run svace static analysis on source package in hasher chroot.
 
 Usage: $PROG [options] [<path-to-workdir>] <source-package>
   or:  $PROG [options] --workdir=DIR <source-package>
+  or:  $PROG [options] --analyze-only [<path-to-workdir>] <results-tar>
 
 <path-to-workdir> must be valid writable directory.
 
 Options:
+  --analyze-only              skip build, analyze from results tar;
   --apt-config=FILE           path to custom apt.conf file;
   --build-only                skip svace analysis, just build;
   --excludedocs               do not install documentation files;
