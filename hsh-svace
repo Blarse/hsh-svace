@@ -200,46 +200,69 @@ else
 		#
 fi
 
-# Install source package.
-install_source_package
+# Build stage — skip in analyze-only mode.
+if [ -z "$analyze_only" ]; then
+	# Install source package.
+	install_source_package
 
-case "$source_package_type" in
-	src.rpm|pkg.tar) ;;
-	*) fatal "$sname: unsupported source package type: $source_package_type" ;;
-esac
+	case "$source_package_type" in
+		src.rpm|pkg.tar) ;;
+		*) fatal "$sname: unsupported source package type: $source_package_type" ;;
+	esac
 
-# Install build dependencies.
-if [ -z "$nodeps" ]; then
-	install_deps_pkg
-fi
+	# Install build dependencies.
+	if [ -z "$nodeps" ]; then
+		install_deps_pkg
+	fi
 
-# Install helper scripts into chroot.
-install -pm755 $verbose "$selfdir/hsh-svace-build.sh" \
-	chroot/.host/svace-build >&2
-[ -n "$build_only" ] ||
-	install -pm755 $verbose "$selfdir/hsh-svace-analyze.sh" \
-		chroot/.host/svace-analyze >&2
+	# Install build helper script into chroot.
+	install -pm755 $verbose "$selfdir/hsh-svace-build.sh" \
+		chroot/.host/svace-build >&2
 
-# Run svace build.
-purge_chroot_out
+	# Run svace build.
+	purge_chroot_out
 
-create_entry_header
-cat >>"$entry" <<__EOF__
+	create_entry_header
+	cat >>"$entry" <<__EOF__
 exec /.host/svace-build \
 	${quiet:+$quiet} \
 	--target="$(quote_shell "${target:-$def_target}")"
 __EOF__
 
-requested_mountpoints="$required_mountpoints,/proc,/opt" \
-wlimit_time_elapsed=$wlimit_time_long \
-wlimit_time_idle=$wlimit_time_long \
-	chrootuid2 </dev/null &&
-	verbose "$sname: svace build complete." ||
-	fatal "$sname: svace build failed."
+	requested_mountpoints="$required_mountpoints,/proc,/opt" \
+	wlimit_time_elapsed=$wlimit_time_long \
+	wlimit_time_idle=$wlimit_time_long \
+		chrootuid2 </dev/null &&
+		verbose "$sname: svace build complete." ||
+		fatal "$sname: svace build failed."
+fi
 
-# Run svace analyze.
-# Note: $HOME/.hasplm is created by the analyze script itself.
+# Load existing results for analyze-only mode.
+if [ -n "$analyze_only" ]; then
+	purge_chroot_out
+
+	install -pm644 $verbose "$source" \
+		chroot/.in/hsh-svace-results.tar >&2
+
+	create_entry_header
+	cat >>"$entry" <<__EOF__
+tar -xf hsh-svace-results.tar \
+	--transform 's,^hsh-svace-results/,out/,' \
+	-C "\$HOME"
+__EOF__
+
+	requested_mountpoints= \
+	wlimit_time_elapsed=$wlimit_time_short \
+	wlimit_time_idle=$wlimit_time_short \
+		chrootuid2 </dev/null ||
+		fatal "$sname: failed to extract results in chroot."
+fi
+
+# Run svace analyze — skip in build-only mode.
 if [ -z "$build_only" ]; then
+	install -pm755 $verbose "$selfdir/hsh-svace-analyze.sh" \
+		chroot/.host/svace-analyze >&2
+
 	create_entry_header
 	cat >>"$entry" <<__EOF__
 exec /.host/svace-analyze \
