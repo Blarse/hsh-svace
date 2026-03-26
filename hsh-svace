@@ -272,7 +272,7 @@ exec /.host/svace-build \
 	--target="$(quote_shell "${target:-$def_target}")"
 __EOF__
 
-	requested_mountpoints="$required_mountpoints,/proc,/opt" \
+	requested_mountpoints="$required_mountpoints,/proc${bind_svace:+,/opt}" \
 	wlimit_time_elapsed=$wlimit_time_long \
 	wlimit_time_idle=$wlimit_time_long \
 		chrootuid2 </dev/null &&
@@ -314,7 +314,7 @@ exec /.host/svace-analyze \
 __EOF__
 
 	share_network=1 \
-	requested_mountpoints="/proc,/opt" \
+	requested_mountpoints="/proc${bind_svace:+,/opt}" \
 	wlimit_time_elapsed=$wlimit_time_long \
 	wlimit_time_idle=$wlimit_time_long \
 		chrootuid2 </dev/null &&
