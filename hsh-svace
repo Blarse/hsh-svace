@@ -136,6 +136,10 @@ fi
 [ -z "${outdir##/*}" ] || outdir="$saved_cwd/$outdir"
 [ -d "$outdir" ] || fatal "$outdir: output directory does not exist."
 
+if [ -n "$build_only" ] && [ -n "$analyze_only" ]; then
+	fatal '--build-only and --analyze-only are mutually exclusive.'
+fi
+
 if [ -z "$build_only" ] && [ -z "$hasp_serveraddr" ]; then
 	show_usage 'Set hasp serveraddr with -S option or hasp_serveraddr env variable.' \
 		'To disable analyze stage use --build-only option.'
@@ -147,6 +151,11 @@ source="$1"
 [ -z "${source##/*}" ] || source="$saved_cwd/$source"
 sname="${source##*/}"
 shift
+
+if [ -n "$analyze_only" ]; then
+	[ -f "$source" ] ||
+		fatal "$sname: results tar not found."
+fi
 
 rc=0
 
