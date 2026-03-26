@@ -45,6 +45,9 @@ Options:
   --number=NUMBER             subconfig identifier;
   --outdir=DIR                directory for results (default .);
   --rebuild                   use existing hasher;
+  --svace-warning=ARG         svace warning command (repeatable);
+  --svace-warning-all         enable all svace warnings (svace warning all true);
+  --svace-warning-file=FILE   svace warnings config file;
   --target=ARCH               target architecture;
   --wait-lock                 wait for workdir and hasher-priv locks;
   --no-wait-lock              do not wait for workdir and hasher-priv locks;
@@ -64,7 +67,7 @@ EOF
 }
 
 TEMP=`getopt -n $PROG -o S:,$getopt_common_opts \
-	-l analyze-only,apt-config:,bind-svace,build-only,excludedocs,hasp-serveraddr:,hasher-priv-dir:,install-svace::,mountpoints:,no-lock,nodeps,number:,outdir:,rebuild,target:,wait-lock,no-wait-lock,without-stuff,with-stuff,workdir:,$getopt_common_longopts \
+	-l analyze-only,apt-config:,bind-svace,build-only,excludedocs,hasp-serveraddr:,hasher-priv-dir:,install-svace::,mountpoints:,no-lock,nodeps,number:,outdir:,rebuild,svace-warning:,svace-warning-all,svace-warning-file:,target:,wait-lock,no-wait-lock,without-stuff,with-stuff,workdir:,$getopt_common_longopts \
 	-- "$@"` ||
 	show_usage
 prepare_cgroup "$TEMP" "$0" "$@"
@@ -75,6 +78,9 @@ analyze_only=
 install_svace=
 bind_svace=
 svace_version=
+svace_warning_all=
+svace_warning_file=
+svace_warning_args=
 nodeps=
 rebuild=
 workdir_from_opt=
@@ -114,6 +120,13 @@ while :; do
 		--outdir) shift; outdir="$1"
 			;;
 		--rebuild) rebuild=1
+			;;
+		--svace-warning) shift
+			svace_warning_args="$svace_warning_args --warning '$(printf %s "$1" | sed "s/'/'\\\\''/g")'"
+			;;
+		--svace-warning-all) svace_warning_all=1
+			;;
+		--svace-warning-file) shift; svace_warning_file="$1"
 			;;
 		--target) shift; target="$1"
 			[ -z "${target##[A-Za-z]*}" ] ||
@@ -168,6 +181,10 @@ fi
 
 if [ -n "$install_svace" ] && [ -n "$bind_svace" ]; then
 	fatal '--install-svace and --bind-svace are mutually exclusive.'
+fi
+
+if [ -n "$svace_warning_all" ] && [ -n "$svace_warning_file" ]; then
+	fatal '--svace-warning-all and --svace-warning-file are mutually exclusive.'
 fi
 
 if [ -z "$build_only" ] && [ -z "$hasp_serveraddr" ]; then
@@ -344,12 +361,23 @@ if [ -z "$build_only" ]; then
 	install -pm755 $verbose "$selfdir/hsh-svace-analyze.sh" \
 		chroot/.host/svace-analyze >&2
 
+	if [ -n "$svace_warning_file" ]; then
+		[ -f "$svace_warning_file" ] ||
+			fatal "$svace_warning_file: svace warnings file not found."
+		install -pm644 $verbose "$svace_warning_file" \
+			chroot/.host/svace-warnings.conf >&2
+		svace_warning_args="--warnings-file /.host/svace-warnings.conf${svace_warning_args:+ $svace_warning_args}"
+	elif [ -n "$svace_warning_all" ]; then
+		svace_warning_args="--warning-all${svace_warning_args:+ $svace_warning_args}"
+	fi
+
 	create_entry_header
 	cat >>"$entry" <<__EOF__
 exec /.host/svace-analyze \
 	${quiet:+$quiet} \
 	${verbose:+$verbose} \
-	-S "$(quote_shell "$hasp_serveraddr")"
+	-S "$(quote_shell "$hasp_serveraddr")" \
+	$svace_warning_args
 __EOF__
 
 	share_network=1 \

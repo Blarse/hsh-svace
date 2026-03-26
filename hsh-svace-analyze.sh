@@ -14,11 +14,14 @@
 # 5. Run hasher with share_network=1
 
 PROG=hsh-svace-analyze
-TEMP=$(getopt -n "$PROG" -o S:,q,v -l hasp-serveraddr:,quiet,verbose -- "$@") || exit 1
+TEMP=$(getopt -n "$PROG" -o S:,q,v -l hasp-serveraddr:,quiet,verbose,warning-all,warnings-file:,warning: -- "$@") || exit 1
 eval set -- "$TEMP"
 
 verbose=
 hasp_serveraddr=localhost
+warning_all=
+warnings_file=
+svace_warnings=()
 while :; do
 	case "$1" in
 		-S|--hasp-serveraddr) shift; hasp_serveraddr="$1"
@@ -26,6 +29,12 @@ while :; do
 		-v|--verbose) verbose=-v
 			;;
 		-q|--quiet) verbose=
+			;;
+		--warning-all) warning_all=1
+			;;
+		--warnings-file) shift; warnings_file="$1"
+			;;
+		--warning) shift; svace_warnings+=("$1")
 			;;
 		--) shift; break
 			;;
@@ -57,8 +66,18 @@ fi
 set -o pipefail
 ${verbose:+set -x}
 
-/opt/svace/bin/svace warning all true --svace-dir "$HOME/out/svace-dir" 2>&1 |
-	tee "$HOME/out/svace-warning.log" >&3
+if [ -n "$warning_all" ]; then
+	/opt/svace/bin/svace warning all true \
+		--svace-dir "$HOME/out/svace-dir" 2>&1 |
+		tee "$HOME/out/svace-warning.log" >&3
+elif [ -n "$warnings_file" ]; then
+	cp -- "$warnings_file" "$HOME/out/svace-dir/warn-settings.txt"
+fi
+for w in "${svace_warnings[@]}"; do
+	/opt/svace/bin/svace warning $w \
+		--svace-dir "$HOME/out/svace-dir" 2>&1 |
+		tee -a "$HOME/out/svace-warning.log" >&3
+done
 /opt/svace/bin/svace analyze -v \
 	--svace-dir "$HOME/out/svace-dir" 2>&1 |
 	tee "$HOME/out/svace-analyze.log" >&3
