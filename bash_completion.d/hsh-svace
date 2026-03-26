@@ -1,0 +1,71 @@
+# bash completion for hsh-svace
+
+_hsh_svace()
+{
+	local cur prev words cword
+	_init_completion || return
+
+	case "$prev" in
+		--apt-config|--svace-config-file|--svace-warning-file)
+			_filedir
+			return
+			;;
+		--hasher-priv-dir|--outdir|--workdir)
+			_filedir -d
+			return
+			;;
+		--target|--number|--mountpoints|-S|--hasp-serveraddr|--svace-config|--svace-warning)
+			return
+			;;
+	esac
+
+	case "$cur" in
+		--apt-config=*|--svace-config-file=*|--svace-warning-file=*)
+			cur="${cur#*=}"
+			_filedir
+			return
+			;;
+		--hasher-priv-dir=*|--outdir=*|--workdir=*)
+			cur="${cur#*=}"
+			_filedir -d
+			return
+			;;
+		-*)
+			COMPREPLY=($(compgen -W '
+				--analyze-only
+				--apt-config
+				--bind-svace
+				--build-only
+				--excludedocs
+				--hasp-serveraddr
+				--hasher-priv-dir
+				--install-svace
+				--mountpoints
+				--nodeps
+				--number
+				--outdir
+				--rebuild
+				--svace-config
+				--svace-config-file
+				--svace-warning
+				--svace-warning-all
+				--svace-warning-file
+				--target
+				--wait-lock
+				--no-wait-lock
+				--without-stuff
+				--with-stuff
+				--workdir
+				-S
+				-q --quiet
+				-v --verbose
+				-V --version
+				-h --help
+			' -- "$cur"))
+			return
+			;;
+	esac
+
+	_filedir
+} &&
+complete -F _hsh_svace hsh-svace
