@@ -14,14 +14,16 @@
 # 5. Run hasher with share_network=1
 
 PROG=hsh-svace-analyze
-TEMP=$(getopt -n "$PROG" -o S:,q -l hasp-serveraddr:,quiet -- "$@") || exit 1
+TEMP=$(getopt -n "$PROG" -o S:,q,v -l hasp-serveraddr:,quiet,verbose -- "$@") || exit 1
 eval set -- "$TEMP"
 
-verbose=-v
+verbose=
 hasp_serveraddr=localhost
 while :; do
 	case "$1" in
 		-S|--hasp-serveraddr) shift; hasp_serveraddr="$1"
+			;;
+		-v|--verbose) verbose=-v
 			;;
 		-q|--quiet) verbose=
 			;;
@@ -46,14 +48,20 @@ broadcastsearch = 0
 EOF
 done
 
+if [ -n "$verbose" ]; then
+	exec 3>&2
+else
+	exec 3>/dev/null
+fi
+
 set -o pipefail
 ${verbose:+set -x}
 
 /opt/svace/bin/svace warning all true --svace-dir "$HOME/out/svace-dir" 2>&1 |
-	tee "$HOME/out/svace-warning.log" >&2
+	tee "$HOME/out/svace-warning.log" >&3
 /opt/svace/bin/svace analyze -v \
 	--svace-dir "$HOME/out/svace-dir" 2>&1 |
-	tee "$HOME/out/svace-analyze.log" >&2
+	tee "$HOME/out/svace-analyze.log" >&3
 
 rm -f /.out/hsh-svace-results-analyzed.tar
 tar -cf /.out/hsh-svace-results-analyzed.tar \
