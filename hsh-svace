@@ -113,3 +113,74 @@ while :; do
 	esac
 	shift
 done
+
+if [ -z "$workdir_from_opt" ]; then
+	if [ -z "$workdir" ] || [ "$#" -ge 2 ]; then
+		# One more argument for workdir.
+		[ "$#" -ge 2 ] || show_usage 'Insufficient arguments.'
+		workdir="$1"
+		shift
+	fi
+fi
+
+# Exactly one argument.
+[ "$#" -ge 1 ] || show_usage 'Insufficient arguments.'
+[ "$#" -le 1 ] || show_usage 'Too many arguments.'
+
+[ -z "${outdir##/*}" ] || outdir="$saved_cwd/$outdir"
+[ -d "$outdir" ] || fatal "$outdir: output directory does not exist."
+
+if [ -z "$build_only" ] && [ -z "$hasp_serveraddr" ]; then
+	show_usage 'Set hasp serveraddr with -S option or hasp_serveraddr env variable.' \
+		'To disable analyze stage use --build-only option.'
+fi
+
+set_workdir
+
+source="$1"
+[ -z "${source##/*}" ] || source="$saved_cwd/$source"
+sname="${source##*/}"
+shift
+
+rc=0
+
+lock_workdir
+
+if [ -n "$rebuild" ]; then
+	[ -d "$chroot" ] || fatal "$chroot: cannot find chroot."
+	deduce_lock_hasher_priv
+else
+	rm -rf aptbox
+	if [ -d chroot ]; then
+		deduce_lock_hasher_priv
+		hsh-rmchroot --no-lock "$workdir" \
+			${hasher_priv_dir:+--hasher-priv-dir="$hasher_priv_dir"} \
+			${quiet:+$quiet} \
+			${verbose:+$verbose} \
+			${number:+--number=$number} \
+			#
+	else
+		allocate_lock_hasher_priv
+	fi
+
+	mkaptbox --no-lock "$workdir" \
+		${target:+--target="$target"} \
+		${apt_config:+--apt-config="$apt_config"} \
+		${quiet:+$quiet} \
+		${verbose:+$verbose} \
+		${no_stuff:+--no-stuff} \
+		#
+	hsh-mkchroot --no-lock "$workdir" \
+		${hasher_priv_dir:+--hasher-priv-dir="$hasher_priv_dir"} \
+		${quiet:+$quiet} \
+		${verbose:+$verbose} \
+		${number:+--number=$number} \
+		#
+	hsh-initroot --no-lock "$workdir" \
+		${hasher_priv_dir:+--hasher-priv-dir="$hasher_priv_dir"} \
+		${quiet:+$quiet} \
+		${verbose:+$verbose} \
+		${exclude_docs:+--excludedocs} \
+		${number:+--number=$number} \
+		#
+fi
