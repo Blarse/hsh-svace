@@ -246,6 +246,18 @@ __EOF__
 		-- rpm-build-svace
 fi
 
+# Verify svace is available in chroot.
+create_entry_header
+cat >>"$entry" <<'__EOF__'
+test -x /opt/svace/bin/svace
+__EOF__
+
+requested_mountpoints="${bind_svace:+/opt}" \
+wlimit_time_elapsed=$wlimit_time_short \
+wlimit_time_idle=$wlimit_time_short \
+	chrootuid1 </dev/null ||
+	fatal "svace not found in chroot: /opt/svace/bin/svace is missing or not executable."
+
 # Build stage — skip in analyze-only mode.
 if [ -z "$analyze_only" ]; then
 	# Install source package.
