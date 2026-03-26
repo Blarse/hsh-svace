@@ -143,8 +143,12 @@ if [ -n "$build_only" ] && [ -n "$analyze_only" ]; then
 fi
 
 if [ -z "$build_only" ] && [ -z "$hasp_serveraddr" ]; then
-	show_usage 'Set hasp serveraddr with -S option or hasp_serveraddr env variable.' \
-		'To disable analyze stage use --build-only option.'
+	if [ -n "$analyze_only" ]; then
+		show_usage 'Set hasp serveraddr with -S option or hasp_serveraddr env variable.'
+	else
+		show_usage 'Set hasp serveraddr with -S option or hasp_serveraddr env variable.' \
+			'To disable analyze stage use --build-only option.'
+	fi
 fi
 
 set_workdir
@@ -249,7 +253,7 @@ if [ -n "$analyze_only" ]; then
 	create_entry_header
 	cat >>"$entry" <<__EOF__
 tar -xf hsh-svace-results.tar \
-	--transform 's,^hsh-svace-results/,out/,' \
+	--transform 's,^hsh-svace-results,out,' \
 	-C "\$HOME"
 __EOF__
 
