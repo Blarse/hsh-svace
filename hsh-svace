@@ -289,13 +289,15 @@ __EOF__
 fi
 
 # Copy results.
-[ ! -f "$outdir/hsh-svace-results.tar" ] ||
-	mv -f "$outdir/hsh-svace-results.tar" \
-	   "$outdir/hsh-svace-results.tar.bak"
+if [ -z "$build_only" ]; then
+	results_tar=hsh-svace-results-analyzed.tar
+else
+	results_tar=hsh-svace-results.tar
+fi
 
-cp -f "chroot/.out/hsh-svace-results.tar" \
-	"$outdir/hsh-svace-results.tar" &&
-	verbose "Results saved to $outdir/hsh-svace-results.tar" ||
+cp -f --backup=numbered "chroot/.out/$results_tar" \
+	"$outdir/$results_tar" &&
+	verbose "Results saved to $outdir/$results_tar" ||
 	fatal "Failed to copy results."
 
 exit "$rc"
