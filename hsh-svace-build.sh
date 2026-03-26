@@ -42,14 +42,22 @@ SOURCE_DATE_EPOCH="$(cat -- "$HOME/in/SOURCE_DATE_EPOCH")"
 export SOURCE_DATE_EPOCH
 
 cd "$HOME/in"
-srpm="$HOME/in/srpm"/*
+srpm="$(find "$HOME/in/srpm" -maxdepth 1 -mindepth 1 -type f)"
+if [ -z "$srpm" ]; then
+	echo "$PROG: no src.rpm found in $HOME/in/srpm/" >&2
+	exit 1
+fi
 
 rpmi -i \
 	--define "_specdir $HOME/in/specs" \
 	--define "_sourcedir $HOME/in/sources" \
 	"$srpm"
 
-spec="$HOME/in/specs"/*
+spec="$(find "$HOME/in/specs" -maxdepth 1 -mindepth 1 -type f)"
+if [ -z "$spec" ]; then
+	echo "$PROG: no spec found in $HOME/in/specs/" >&2
+	exit 1
+fi
 name="$(rpmquery -p --qf '%{NAME}' "$srpm")"
 version="$(rpmquery -p --qf '%{VERSION}' "$srpm")"
 release="$(rpmquery -p --qf '%{RELEASE}' "$srpm")"
