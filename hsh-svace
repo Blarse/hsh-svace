@@ -45,6 +45,8 @@ Options:
   --number=NUMBER             subconfig identifier;
   --outdir=DIR                directory for results (default .);
   --rebuild                   use existing hasher;
+  --svace-config=ARG          svace config command (repeatable);
+  --svace-config-file=FILE    svace config file;
   --svace-warning=ARG         svace warning command (repeatable);
   --svace-warning-all         enable all svace warnings (svace warning all true);
   --svace-warning-file=FILE   svace warnings config file;
@@ -67,7 +69,7 @@ EOF
 }
 
 TEMP=`getopt -n $PROG -o S:,$getopt_common_opts \
-	-l analyze-only,apt-config:,bind-svace,build-only,excludedocs,hasp-serveraddr:,hasher-priv-dir:,install-svace::,mountpoints:,no-lock,nodeps,number:,outdir:,rebuild,svace-warning:,svace-warning-all,svace-warning-file:,target:,wait-lock,no-wait-lock,without-stuff,with-stuff,workdir:,$getopt_common_longopts \
+	-l analyze-only,apt-config:,bind-svace,build-only,excludedocs,hasp-serveraddr:,hasher-priv-dir:,install-svace::,mountpoints:,no-lock,nodeps,number:,outdir:,rebuild,svace-config:,svace-config-file:,svace-warning:,svace-warning-all,svace-warning-file:,target:,wait-lock,no-wait-lock,without-stuff,with-stuff,workdir:,$getopt_common_longopts \
 	-- "$@"` ||
 	show_usage
 prepare_cgroup "$TEMP" "$0" "$@"
@@ -78,6 +80,8 @@ analyze_only=
 install_svace=
 bind_svace=
 svace_version=
+svace_config_file=
+svace_config_args=
 svace_warning_all=
 svace_warning_file=
 svace_warning_args=
@@ -120,6 +124,11 @@ while :; do
 		--outdir) shift; outdir="$1"
 			;;
 		--rebuild) rebuild=1
+			;;
+		--svace-config) shift
+			svace_config_args="$svace_config_args --config '$(printf %s "$1" | sed "s/'/'\\\\''/g")'"
+			;;
+		--svace-config-file) shift; svace_config_file="$1"
 			;;
 		--svace-warning) shift
 			svace_warning_args="$svace_warning_args --warning '$(printf %s "$1" | sed "s/'/'\\\\''/g")'"
@@ -314,6 +323,15 @@ if [ -z "$analyze_only" ]; then
 	install -pm755 $verbose "$selfdir/hsh-svace-build.sh" \
 		chroot/.host/svace-build >&2
 
+	# Copy svace config file into chroot if specified.
+	if [ -n "$svace_config_file" ]; then
+		[ -f "$svace_config_file" ] ||
+			fatal "$svace_config_file: svace config file not found."
+		install -pm644 $verbose "$svace_config_file" \
+			chroot/.host/svace-config.conf >&2
+		svace_config_args="--config-file /.host/svace-config.conf${svace_config_args:+ $svace_config_args}"
+	fi
+
 	# Run svace build.
 	purge_chroot_out
 
@@ -322,7 +340,8 @@ if [ -z "$analyze_only" ]; then
 exec /.host/svace-build \
 	${quiet:+$quiet} \
 	${verbose:+$verbose} \
-	--target="$(quote_shell "${target:-$def_target}")"
+	--target="$(quote_shell "${target:-$def_target}")" \
+	$svace_config_args
 __EOF__
 
 	requested_mountpoints="$required_mountpoints,/proc${bind_svace:+,/opt}" \
@@ -361,6 +380,18 @@ if [ -z "$build_only" ]; then
 	install -pm755 $verbose "$selfdir/hsh-svace-analyze.sh" \
 		chroot/.host/svace-analyze >&2
 
+	# In analyze-only mode, config was not applied during build,
+	# so pass config args to the analyze script.
+	if [ -n "$analyze_only" ]; then
+		if [ -n "$svace_config_file" ]; then
+			[ -f "$svace_config_file" ] ||
+				fatal "$svace_config_file: svace config file not found."
+			install -pm644 $verbose "$svace_config_file" \
+				chroot/.host/svace-config.conf >&2
+			svace_config_args="--config-file /.host/svace-config.conf${svace_config_args:+ $svace_config_args}"
+		fi
+	fi
+
 	if [ -n "$svace_warning_file" ]; then
 		[ -f "$svace_warning_file" ] ||
 			fatal "$svace_warning_file: svace warnings file not found."
@@ -377,7 +408,8 @@ exec /.host/svace-analyze \
 	${quiet:+$quiet} \
 	${verbose:+$verbose} \
 	-S "$(quote_shell "$hasp_serveraddr")" \
-	$svace_warning_args
+	$svace_warning_args \
+	${analyze_only:+$svace_config_args}
 __EOF__
 
 	share_network=1 \

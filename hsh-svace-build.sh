@@ -12,11 +12,13 @@
 # 3. /opt/svace available
 
 PROG=hsh-svace-build
-TEMP=$(getopt -n "$PROG" -o q,v -l target:,quiet,verbose -- "$@") || exit 1
+TEMP=$(getopt -n "$PROG" -o q,v -l target:,quiet,verbose,config:,config-file: -- "$@") || exit 1
 eval set -- "$TEMP"
 
 verbose=
 target=
+config_file=
+svace_configs=()
 while :; do
 	case "$1" in
 		--target) shift; target="$1"
@@ -24,6 +26,10 @@ while :; do
 		-v|--verbose) verbose=-v
 			;;
 		-q|--quiet) verbose=
+			;;
+		--config) shift; svace_configs+=("$1")
+			;;
+		--config-file) shift; config_file="$1"
 			;;
 		--) shift; break
 			;;
@@ -87,6 +93,16 @@ rpmbuild -bp \
 
 /opt/svace/bin/svace init --bare "$HOME/out/svace-dir" 2>&1 |
 	tee "$HOME/out/svace-init.log" >&3
+
+# Apply svace config settings after init, before build.
+if [ -n "$config_file" ]; then
+	cp -- "$config_file" "$HOME/out/svace-dir/settings.txt"
+fi
+for c in "${svace_configs[@]}"; do
+	/opt/svace/bin/svace config $c \
+		--svace-dir "$HOME/out/svace-dir" 2>&1 |
+		tee -a "$HOME/out/svace-config.log" >&3
+done
 
 /opt/svace/bin/svace build -v \
 	--svace-dir="$HOME/out/svace-dir" \

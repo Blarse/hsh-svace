@@ -14,11 +14,13 @@
 # 5. Run hasher with share_network=1
 
 PROG=hsh-svace-analyze
-TEMP=$(getopt -n "$PROG" -o S:,q,v -l hasp-serveraddr:,quiet,verbose,warning-all,warnings-file:,warning: -- "$@") || exit 1
+TEMP=$(getopt -n "$PROG" -o S:,q,v -l hasp-serveraddr:,quiet,verbose,config:,config-file:,warning-all,warnings-file:,warning: -- "$@") || exit 1
 eval set -- "$TEMP"
 
 verbose=
 hasp_serveraddr=localhost
+config_file=
+svace_configs=()
 warning_all=
 warnings_file=
 svace_warnings=()
@@ -29,6 +31,10 @@ while :; do
 		-v|--verbose) verbose=-v
 			;;
 		-q|--quiet) verbose=
+			;;
+		--config) shift; svace_configs+=("$1")
+			;;
+		--config-file) shift; config_file="$1"
 			;;
 		--warning-all) warning_all=1
 			;;
@@ -65,6 +71,16 @@ fi
 
 set -o pipefail
 ${verbose:+set -x}
+
+# Apply svace config settings (analyze-only mode).
+if [ -n "$config_file" ]; then
+	cp -- "$config_file" "$HOME/out/svace-dir/settings.txt"
+fi
+for c in "${svace_configs[@]}"; do
+	/opt/svace/bin/svace config $c \
+		--svace-dir "$HOME/out/svace-dir" 2>&1 |
+		tee -a "$HOME/out/svace-config.log" >&3
+done
 
 if [ -n "$warning_all" ]; then
 	/opt/svace/bin/svace warning all true \
