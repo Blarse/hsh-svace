@@ -420,13 +420,18 @@ __EOF__
 		verbose "$sname: svace analyze complete." || {
 			rc=$?
 			message "$sname: svace analyze failed."
-			message "The output archive contains only the results of 'svace build'."
+			if [ -n "$analyze_only" ]; then
+				exit "$rc"
+			fi
+			message "Saving 'svace build' results instead."
+			message "To analyze them later, run: $PROG --analyze-only <results-tar>"
 		}
 fi
 
 stage "copying results..."
 # Copy results.
-if [ -z "$build_only" ]; then
+# After a failed analyze, only the build results tar is available.
+if [ -z "$build_only" ] && [ "$rc" -eq 0 ]; then
 	results_tar=hsh-svace-results-analyzed.tar
 else
 	results_tar=hsh-svace-results.tar
