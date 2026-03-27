@@ -81,6 +81,41 @@ configuration:
 > **TIP:** You can install multiple SVACE distributions to `/opt` and
 > create a symlink `/opt/svace` pointing to the relevant one.
 
+## Svace configuration
+
+### Config options
+
+Use `--svace-config` and `--svace-config-file` to customize svace settings.
+Config is applied after `svace init` (before `svace build`), and in
+`--analyze-only` mode — before `svace analyze`.
+
+`--svace-config-file=FILE` replaces the default `svace-dir/settings.txt` with
+the specified file. `--svace-config=ARG` passes arguments directly to
+`svace config` command. Both options can be combined — the file is applied
+first as a base, then individual `--svace-config` commands override on top:
+
+    hsh-svace --svace-config-file=my-settings.txt \
+        --svace-config "THREAD_NUMBER max" \
+        -S 192.168.1.100 --workdir=~/hasher package-1.0-alt1.src.rpm
+
+### Warning options
+
+Use `--svace-warning`, `--svace-warning-all` and `--svace-warning-file` to
+customize which warnings svace reports during analysis.
+
+`--svace-warning-all` enables all svace warnings (`svace warning all true`).
+`--svace-warning-file=FILE` replaces `svace-dir/warn-settings.txt` with the
+specified file. `--svace-warning=ARG` passes arguments directly to
+`svace warning` command. `--svace-warning-all` and `--svace-warning-file` are
+mutually exclusive, but both can be combined with `--svace-warning`:
+
+    hsh-svace --svace-warning-all \
+        --svace-warning "DEREF_AFTER_NULL.EX false" \
+        -S 192.168.1.100 --workdir=~/hasher package-1.0-alt1.src.rpm
+
+    hsh-svace --svace-warning-file=my-warnings.txt \
+        -S 192.168.1.100 --workdir=~/hasher package-1.0-alt1.src.rpm
+
 ## Results
 
 `hsh-svace` creates a results archive in the directory specified with
