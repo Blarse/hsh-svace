@@ -98,6 +98,9 @@ done
 	--svace-dir "$HOME/out/svace-dir" 2>&1 |
 	tee "$HOME/out/svace-analyze.log" >&3
 
+svace_ver="$(/opt/svace/bin/svace --version 2>/dev/null | grep -o '\([0-9]\+\.\)\+[0-9]\+')"
+echo "svace-analyze-version:$svace_ver" >> "$HOME/out/metadata"
+
 rm -f /.out/hsh-svace-results-analyzed.tar
 tar -cf /.out/hsh-svace-results-analyzed.tar \
 	--owner=user --group=user \

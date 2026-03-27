@@ -122,6 +122,8 @@ sed -i -e 's|$|:|' "$HOME/out/pathprefix.txt"
 
 echo "$HOME/in/sources:/sources" >> "$HOME/out/pathprefix.txt"
 
+svace_ver="$(/opt/svace/bin/svace --version 2>/dev/null | grep -o '\([0-9]\+\.\)\+[0-9]\+')"
+
 cat > "$HOME/out/metadata" <<EOF
 project:$name
 branch:$(rpm --eval '%_priority_distbranch')
@@ -130,6 +132,7 @@ svace-dir:svace-dir
 spec:$(basename "$spec")
 path-prefix:pathprefix.txt
 build-hash:$(grep -o '^[0-9a-f]\{40\}' "$HOME/out/svace-dir/shared/builds")
+svace-build-version:$svace_ver
 EOF
 
 cp "$spec" "$HOME/out"
