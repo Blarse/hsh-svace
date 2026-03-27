@@ -13,6 +13,20 @@ selfdir="$(dirname "$(realpath "$0")")"
 . hsh-sh-functions
 . hsh-sh-rebuild-functions
 
+print_version()
+{
+	cat <<EOF
+$PROG version @VERSION@
+Written by Egor Ignatov <egori@altlinux.org>
+
+Copyright (C) 2024-2026  Egor Ignatov <egori@altlinux.org>
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>.
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+EOF
+	exit
+}
+
 stage()
 {
 	[ -z "$quiet" ] || return 0
