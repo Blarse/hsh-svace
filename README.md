@@ -55,8 +55,13 @@ methods:
 ### --install-svace (default)
 
 Installs the `rpm-build-svace` package into the chroot. This is the default
-method and requires no extra hasher configuration. Optionally specify a
-version:
+method. The package fetches the svace distribution over the network during
+installation, so the chroot must have the resolver configuration files. Enable
+them by adding to `~/.hasher/config`:
+
+    install_resolver_configuration_files=yes
+
+Optionally specify a version:
 
     hsh-svace --install-svace=3.5.1 ...
 
